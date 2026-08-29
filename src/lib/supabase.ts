@@ -14,7 +14,7 @@ export const supabase: SupabaseClient = createClient(
   { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
 )
 
-/** Absolute app root, e.g. https://user.github.io/wego/ — used for magic links. */
+/** Absolute app root, e.g. https://user.github.io/WeGo/ — where Google returns the user. */
 export function appBaseUrl(): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}`
 }

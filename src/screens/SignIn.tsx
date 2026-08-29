@@ -2,44 +2,41 @@ import { useState } from 'react'
 import { supabase, appBaseUrl } from '../lib/supabase'
 import { Banner, errorMessage } from '../components/ui'
 
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
+  )
+}
+
 export function SignInScreen({ invitedTo }: { invitedTo?: string | null }) {
-  const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
+  async function signIn() {
     setBusy(true)
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: appBaseUrl() },
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: appBaseUrl(),
+        // Let people pick an account rather than silently reusing the last one.
+        queryParams: { prompt: 'select_account' },
+      },
     })
-    setBusy(false)
-    if (err) { setError(errorMessage(err, 'Could not send the sign-in link.')); return }
-    setError(null)
-    setSent(true)
-  }
-
-  if (sent) {
-    return (
-      <div className="centered">
-        <div className="card">
-          <div className="brand"><b>WeGo</b></div>
-          <h2>Check your inbox</h2>
-          <p className="small muted">
-            We sent a sign-in link to <strong>{email}</strong>. Open it on this device to continue.
-            The link expires shortly, so if it stops working just request a new one.
-          </p>
-          <button className="btn block" onClick={() => setSent(false)}>Use a different email</button>
-        </div>
-      </div>
-    )
+    // On success the browser navigates to Google, so this only runs on failure.
+    if (err) {
+      setBusy(false)
+      setError(errorMessage(err, 'Could not start sign-in.'))
+    }
   }
 
   return (
     <div className="centered">
-      <form className="card" onSubmit={submit}>
+      <div className="card">
         <div className="brand"><b>WeGo</b><span className="muted small">plan a trip together</span></div>
         {invitedTo ? (
           <Banner kind="info">
@@ -48,26 +45,17 @@ export function SignInScreen({ invitedTo }: { invitedTo?: string | null }) {
         ) : null}
         <h2>Sign in</h2>
         <p className="small muted">
-          No password needed. We email you a link that signs you in.
+          WeGo uses your Google account so there is no extra password to remember.
+          We only ever see your name and email address.
         </p>
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <label className="field">
-          Email
-          <input
-            required
-            autoFocus
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-        </label>
-        <button className="btn primary block" type="submit" disabled={busy || !email.trim()}>
-          {busy ? 'Sending…' : 'Email me a sign-in link'}
+        <button className="btn primary block row" onClick={() => void signIn()} disabled={busy}>
+          <span className="row" style={{ justifyContent: 'center', gap: 10 }}>
+            <GoogleMark />
+            {busy ? 'Redirecting…' : 'Continue with Google'}
+          </span>
         </button>
-      </form>
+      </div>
     </div>
   )
 }

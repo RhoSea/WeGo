@@ -2,7 +2,8 @@
 
 A small web app for a group of friends to plan one trip together and track what
 everyone still needs to save. Built with React, TypeScript, Vite and Supabase,
-hosted on GitHub Pages.
+hosted on GitHub Pages. Sign-in is through Google, so there is no password to
+remember and no email delivery to go wrong.
 
 Three screens:
 
@@ -40,28 +41,38 @@ npm run dev             # http://localhost:5173
 
    Both are safe in a browser bundle; they only ever grant what Row Level
    Security allows. **Never** copy the `service_role` key into this project.
-4. Go to **Authentication → Providers → Email** and make sure *Email* is enabled.
-   Passwords can stay off — WeGo only uses magic links.
+4. Set up Google sign-in — see [Google sign-in](#google-sign-in) below.
 5. Go to **Authentication → URL Configuration** and add both of these to
    *Redirect URLs*:
    - `http://localhost:5173/`
    - `https://rhosea.github.io/WeGo/`
 
-### Email delivery — required before inviting real friends
+### Google sign-in
 
-Supabase's built-in email service is capped at roughly **2 messages per hour**
-and is meant for development only. Because WeGo signs everyone in with a magic
-link, a group of friends will hit that cap almost immediately and sign-in will
-start failing with `over_email_send_rate_limit`.
+WeGo signs people in with their Google account. Nothing is emailed, so there are
+no delivery failures, no spam folders and no send-rate limits to manage.
 
-Before real use, connect your own SMTP provider under
-**Project Settings → Authentication → SMTP Settings**. Resend, Brevo and
-Postmark all have free tiers that comfortably cover a group of friends. This is
-a dashboard change only — no code changes are needed.
+**In [Google Cloud Console](https://console.cloud.google.com):**
 
-Sign-in links are also single-device: the magic link must be opened on the same
-browser that requested it, because the PKCE verifier is held in that browser's
-local storage.
+1. Create a project.
+2. **APIs & Services → OAuth consent screen**: user type *External*, fill in the
+   app name and your own email for the two contact fields.
+3. Click **Publish app**. While the app sits in *Testing*, only manually listed
+   addresses can sign in, which would block your friends. Publishing needs no
+   Google review, because WeGo requests only name and email.
+4. **Credentials → Create Credentials → OAuth client ID → Web application**. Add
+   this to *Authorized redirect URIs*, taking the value from the Supabase page in
+   the next step:
+   ```
+   https://<your-project-ref>.supabase.co/auth/v1/callback
+   ```
+5. Copy the **Client ID** and **Client Secret**.
+
+**In Supabase → Authentication → Sign In / Providers → Google:** enable the
+provider, paste the Client ID and Secret, and save. The callback URL shown there
+must match what you registered in step 4.
+
+The Email provider can be left on or switched off — the app does not use it.
 
 ### How the security model works
 
@@ -96,12 +107,10 @@ nobody can edit someone else's savings:
 npm run verify:live     # reads .env
 ```
 
-It signs its test accounts up with passwords, so it needs
-**Authentication → Sign In / Providers → Email → Confirm email** switched
-**off** while it runs. Turn that back on afterwards. This setting only affects
-password signup, which the app itself never uses — magic-link sign-in always
-verifies by email either way. Point this at a scratch project, never at a
-project holding a real trip.
+It signs its test accounts up with passwords, so it needs the **Email** provider
+enabled with **Confirm email** switched **off** while it runs, then set back
+afterwards. That only affects password signup, which the app itself never uses.
+Point this at a scratch project, never at a project holding a real trip.
 
 The tests cover the parts that are easy to get quietly wrong: equal splits that
 re-divide as members join, personal costs landing on one person, shares summing
@@ -133,8 +142,8 @@ needs no code change. Routing is hash-based, which means deep links such as
    for, then create it.
 3. Copy the link and send it to that one person. Each link is single-use and
    expires after 30 days; you can revoke an unused one at any time.
-4. They open the link, enter their email, click the emailed sign-in link, and
-   land back on the join screen to confirm.
+4. They open the link, continue with Google, and land back on the join screen to
+   confirm.
 
 Everyone sees the same data from any device or country. Budget shares re-divide
 automatically as each new person joins — nothing needs to be re-entered.
