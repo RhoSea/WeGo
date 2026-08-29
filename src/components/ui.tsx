@@ -1,11 +1,14 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export function Sheet(props: { title: string; onClose: () => void; children: ReactNode }) {
+  const onClose = useRef(props.onClose)
+  onClose.current = props.onClose
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') props.onClose() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose.current() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [props])
+  }, [])
 
   return (
     <div

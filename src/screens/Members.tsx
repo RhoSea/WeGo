@@ -66,8 +66,7 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
     e.preventDefault()
     const { error: err } = await supabase
       .from('profiles')
-      .update({ display_name: displayName.trim() || null })
-      .eq('id', userId)
+      .upsert({ id: userId, display_name: displayName.trim() || null })
     if (err) { setError(errorMessage(err, 'Could not save your name.')); return }
     setNameSaved(true)
     setTimeout(() => setNameSaved(false), 2000)

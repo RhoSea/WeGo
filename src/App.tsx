@@ -64,6 +64,10 @@ export default function App() {
 
   if (!isSupabaseConfigured) return <SetupNotice />
 
+  if (authLoading) {
+    return <div className="centered"><div className="card"><p className="muted">Loading…</p></div></div>
+  }
+
   const joinToken = parseJoinToken(route)
   if (joinToken) {
     return (
@@ -83,11 +87,11 @@ export default function App() {
     )
   }
 
-  if (authLoading || (session && trips === null)) {
+  if (!session || !userId) return <SignInScreen />
+
+  if (trips === null) {
     return <div className="centered"><div className="card"><p className="muted">Loading…</p></div></div>
   }
-
-  if (!session || !userId) return <SignInScreen />
 
   const signOut = async () => {
     writeStored(SELECTED_TRIP_KEY, null)
@@ -96,7 +100,7 @@ export default function App() {
     navigate('/plan')
   }
 
-  if (trips !== null && trips.length === 0) {
+  if (trips.length === 0) {
     return (
       <CreateTripScreen
         onCreated={async (trip) => { setTripId(trip.id); await loadTrips(); navigate('/plan') }}
@@ -137,7 +141,7 @@ export default function App() {
       </nav>
 
       <main>
-        {trips && trips.length > 1 ? (
+        {trips.length > 1 ? (
           <label className="field">
             Trip
             <select value={tripId ?? ''} onChange={(e) => setTripId(e.target.value)}>

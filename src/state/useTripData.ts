@@ -32,9 +32,12 @@ export function useTripData(tripId: string | null): TripData {
   const [loading, setLoading] = useState(Boolean(tripId))
   const [error, setError] = useState<string | null>(null)
   const inFlight = useRef(false)
+  const queued = useRef(false)
 
   const refresh = useCallback(async () => {
-    if (!tripId || inFlight.current) return
+    if (!tripId) return
+    // A change arriving mid-fetch schedules one more pass rather than being lost.
+    if (inFlight.current) { queued.current = true; return }
     inFlight.current = true
     try {
       const [tripRes, memberRes, profileRes, planRes, costRes, savingRes] = await Promise.all([
@@ -69,8 +72,12 @@ export function useTripData(tripId: string | null): TripData {
     } finally {
       inFlight.current = false
       setLoading(false)
+      if (queued.current) { queued.current = false; void refreshRef.current() }
     }
   }, [tripId])
+
+  const refreshRef = useRef(refresh)
+  refreshRef.current = refresh
 
   useEffect(() => {
     if (!tripId) {

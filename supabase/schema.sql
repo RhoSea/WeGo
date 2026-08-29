@@ -115,6 +115,14 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+create or replace function public.is_member_of(p_trip_id uuid, p_user_id uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.trip_members m
+    where m.trip_id = p_trip_id and m.user_id = p_user_id
+  );
+$$;
+
 create or replace function public.shares_trip_with(p_user_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -230,11 +238,13 @@ create policy costs_select on public.costs for select to authenticated
 drop policy if exists costs_insert on public.costs;
 create policy costs_insert on public.costs for insert to authenticated
   with check (public.is_trip_member(trip_id) and created_by = auth.uid()
-              and (assigned_to is null or public.is_trip_member(trip_id)));
+              and (assigned_to is null or public.is_member_of(trip_id, assigned_to)));
 
 drop policy if exists costs_update on public.costs;
 create policy costs_update on public.costs for update to authenticated
-  using (public.is_trip_member(trip_id)) with check (public.is_trip_member(trip_id));
+  using (public.is_trip_member(trip_id))
+  with check (public.is_trip_member(trip_id)
+              and (assigned_to is null or public.is_member_of(trip_id, assigned_to)));
 
 drop policy if exists costs_delete on public.costs;
 create policy costs_delete on public.costs for delete to authenticated

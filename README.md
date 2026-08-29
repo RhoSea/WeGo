@@ -45,7 +45,7 @@ npm run dev             # http://localhost:5173
 5. Go to **Authentication → URL Configuration** and add both of these to
    *Redirect URLs*:
    - `http://localhost:5173/`
-   - `https://<your-github-username>.github.io/wego/`
+   - `https://rhosea.github.io/WeGo/`
 
 ### How the security model works
 
@@ -69,6 +69,16 @@ public.
 npm test        # calculation suite (budget splits, savings targets and rates)
 npm run build   # type check + production build
 npm run preview # serve the production build locally
+```
+
+There is also a live check that runs against a real Supabase project. It creates
+throwaway accounts and asserts that Row Level Security actually holds — that a
+non-member sees nothing, that an invitation cannot be redeemed twice, and that
+nobody can edit someone else's savings. It needs password sign-up temporarily
+enabled with email confirmation off, so point it at a scratch project only:
+
+```bash
+VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... npm run verify:live
 ```
 
 The tests cover the parts that are easy to get quietly wrong: equal splits that
