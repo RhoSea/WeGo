@@ -47,6 +47,22 @@ npm run dev             # http://localhost:5173
    - `http://localhost:5173/`
    - `https://rhosea.github.io/WeGo/`
 
+### Email delivery — required before inviting real friends
+
+Supabase's built-in email service is capped at roughly **2 messages per hour**
+and is meant for development only. Because WeGo signs everyone in with a magic
+link, a group of friends will hit that cap almost immediately and sign-in will
+start failing with `over_email_send_rate_limit`.
+
+Before real use, connect your own SMTP provider under
+**Project Settings → Authentication → SMTP Settings**. Resend, Brevo and
+Postmark all have free tiers that comfortably cover a group of friends. This is
+a dashboard change only — no code changes are needed.
+
+Sign-in links are also single-device: the magic link must be opened on the same
+browser that requested it, because the PKCE verifier is held in that browser's
+local storage.
+
 ### How the security model works
 
 All seven tables have Row Level Security enabled and no policy is open to the
@@ -74,12 +90,18 @@ npm run preview # serve the production build locally
 There is also a live check that runs against a real Supabase project. It creates
 throwaway accounts and asserts that Row Level Security actually holds — that a
 non-member sees nothing, that an invitation cannot be redeemed twice, and that
-nobody can edit someone else's savings. It needs password sign-up temporarily
-enabled with email confirmation off, so point it at a scratch project only:
+nobody can edit someone else's savings:
 
 ```bash
-VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... npm run verify:live
+npm run verify:live     # reads .env
 ```
+
+It signs its test accounts up with passwords, so it needs
+**Authentication → Sign In / Providers → Email → Confirm email** switched
+**off** while it runs. Turn that back on afterwards. This setting only affects
+password signup, which the app itself never uses — magic-link sign-in always
+verifies by email either way. Point this at a scratch project, never at a
+project holding a real trip.
 
 The tests cover the parts that are easy to get quietly wrong: equal splits that
 re-divide as members join, personal costs landing on one person, shares summing
