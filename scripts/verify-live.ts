@@ -119,6 +119,12 @@ const { data: inviteB } = await owner.client.rpc('create_invitation', {
 check('owner can generate a separate link per friend',
   !inviteAErr && inviteA?.token && inviteB?.token && inviteA.token !== inviteB.token, inviteAErr?.message)
 
+// Minting a token once failed outright in production because it reached for a
+// pgcrypto function the SECURITY DEFINER search_path could not see. Assert the
+// shape, not just that something came back.
+check('the token is long and URL-safe',
+  /^[A-Za-z0-9_-]{40,}$/.test(inviteA?.token ?? ''), inviteA?.token)
+
 const outsiderInvite = await outsider.client.rpc('create_invitation', { p_trip_id: tripId, p_label: 'nope' })
 check('a non-member cannot mint invitations', Boolean(outsiderInvite.error))
 

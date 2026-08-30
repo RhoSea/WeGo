@@ -115,9 +115,10 @@ public.
   refuses, so nobody can move a trip to a new owner or forge its age.
 - Savings entries are readable by the whole group but writable only by their
   owner (`user_id = auth.uid()` on insert, update and delete).
-- Invitation tokens are 24 random bytes generated in the database and belong to
-  exactly one trip. Accepting one is a single transaction that locks the row
-  (`FOR UPDATE`), marks it accepted, and refuses any later use.
+- Invitation tokens are 32 bytes of database-generated randomness (two v4
+  UUIDs, base64url), and belong to exactly one trip. Accepting one is a single
+  transaction that locks the row (`FOR UPDATE`), marks it accepted, and refuses
+  any later use.
 
 ## 3. Testing
 

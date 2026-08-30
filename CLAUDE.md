@@ -71,6 +71,15 @@ you opened — do not remove it.
 rounded only for display, so per-member amounts still sum to the trip total.
 Put new calculations there with a test, not inline in a component.
 
+**A pinned `search_path` cannot see Supabase's extensions.** Every
+`SECURITY DEFINER` function here sets `search_path = public`, and Supabase keeps
+pgcrypto and friends in the `extensions` schema — so `gen_random_bytes()` and
+anything else from an extension is invisible inside them, however loudly
+`create extension if not exists` appears to succeed (it is a no-op when the
+extension already exists elsewhere). Prefer `pg_catalog` built-ins:
+`gen_random_uuid()`, `encode`, `decode` and `translate` are always reachable.
+This cost one production bug already — invitation links could not be minted.
+
 **RLS helpers are `SECURITY DEFINER` on purpose.** `is_trip_member()` and
 friends exist so policies on `trip_members` do not recurse into themselves.
 Membership is written only by the `create_trip()` and `accept_invitation()`
