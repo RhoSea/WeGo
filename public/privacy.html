@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WeGo — Privacy</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; padding: 32px 20px; background: #0b1120; color: #e8edf7;
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      }
+      main { max-width: 680px; margin: 0 auto; }
+      h1 { font-size: 1.6rem; margin: 0 0 4px; }
+      h2 { font-size: 1.05rem; margin: 32px 0 8px; }
+      p, li { color: #cbd5e9; }
+      .sub { color: #94a3c4; font-size: 0.9rem; margin: 0 0 8px; }
+      ul { padding-left: 20px; }
+      strong { color: #e8edf7; }
+      a { color: #5b8cff; }
+      .note {
+        border: 1px solid #27334f; background: #131c31; border-radius: 12px;
+        padding: 14px 16px; margin-top: 28px; font-size: 0.94rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>WeGo — Privacy</h1>
+      <p class="sub">Last updated 29 August 2026</p>
+
+      <p>
+        WeGo is a small tool that lets a group of friends plan one trip together and
+        keep track of what each person still needs to save. This page explains
+        exactly what it stores and who can see it.
+      </p>
+
+      <h2>What we collect</h2>
+      <ul>
+        <li>
+          <strong>Your name and email address</strong>, provided by Google when you
+          sign in. This is the only thing we request from your Google account, and it
+          is used solely to identify you to the other people on your trip.
+        </li>
+        <li>
+          <strong>The trip information you type in</strong>: plan ideas, estimated and
+          actual costs, and the savings amounts you choose to record.
+        </li>
+      </ul>
+
+      <h2>What we never collect</h2>
+      <p>
+        WeGo does not ask for and cannot store bank details, card numbers, passwords,
+        or identity documents. It does not move, hold, or process money. The savings
+        figures are notes you type for your own tracking — nothing more.
+      </p>
+
+      <h2>Who can see your data</h2>
+      <p>
+        Only people who have joined the same trip as you. This is enforced by the
+        database itself through row-level security policies, not merely hidden in the
+        interface. People who are not members of your trip cannot read it, and each
+        invitation link works only once, for one person.
+      </p>
+      <p>
+        Your savings entries are visible to your trip members, since the point is to
+        see how the group is doing, but only you can add, change, or delete your own.
+      </p>
+
+      <h2>Where it is stored</h2>
+      <p>
+        Trip data is held in a <a href="https://supabase.com" rel="noopener">Supabase</a>
+        project (hosted PostgreSQL) belonging to the person who set up this instance of
+        WeGo. Sign-in is handled by Google. No data is sold, shared with advertisers, or
+        used for anything beyond running the app.
+      </p>
+
+      <h2>Deleting your data</h2>
+      <p>
+        You can delete any plan item, cost, or savings entry from within the app at any
+        time. To remove your account and everything associated with it, contact the
+        person who runs this instance, listed below.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        <!-- REPLACE the line below with your own contact email before publishing. -->
+        Questions about this app or your data: <strong>[add your contact email here]</strong>
+      </p>
+
+      <div class="note">
+        WeGo is a personal, non-commercial project shared between friends. It is
+        provided as-is, with no warranty.
+      </div>
+    </main>
+  </body>
+</html>
