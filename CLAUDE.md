@@ -1,8 +1,9 @@
 # WeGo — notes for Claude
 
-A trip-planning app for one group of friends: shared plan, shared budget, and
-per-person savings tracking. React + TypeScript + Vite on Supabase, deployed to
-GitHub Pages. See [README.md](README.md) for setup and deployment detail.
+A trip-planning app for groups of friends: each person keeps a collection of
+trips, and every trip has its own plan, budget, savings and travellers. React +
+TypeScript + Vite on Supabase, deployed to GitHub Pages. See
+[README.md](README.md) for setup and deployment detail.
 
 - Repo: https://github.com/RhoSea/WeGo (public)
 - Live: https://rhosea.github.io/WeGo/
@@ -21,25 +22,50 @@ Run `npm test && npm run build` before pushing. Pushing to `main` deploys.
 ## Where things live
 
 ```
-src/lib/calc.ts       ALL budget and savings maths, pure and unit tested
-src/lib/calc.test.ts  the suite that guards it
-src/state/            auth session + trip data loading, realtime, refetch
-src/screens/          Plan, Budget, Savings, Members, SignIn, Join, CreateTrip
-src/components/       ui.tsx (shared pieces), art.tsx (all SVG), Nav, TripHeader
-src/styles/           tokens → base → components → screens, imported by styles.css
-supabase/schema.sql   tables, RLS policies, RPCs — the security model
+src/lib/calc.ts        ALL budget and savings maths, pure and unit tested
+src/lib/trips.ts       trip status, per-trip permissions, dashboard summaries
+src/lib/useHashRoute.ts  the routes, including which trip is open
+src/state/useTrips.ts  the whole collection, for the dashboard and switcher
+src/state/useTripData.ts  one open trip: members, plan, costs, savings, realtime
+src/screens/           Trips (dashboard), Plan, Budget, Savings, Members,
+                       TripSettings, SignIn, Join, CreateTrip
+src/components/        ui.tsx (shared pieces), art.tsx (all SVG), Nav,
+                       TripHeader, TripSwitcher
+src/styles/            tokens → base → components → screens, imported by styles.css
+supabase/migrations/   tables, RLS policies, RPCs — the security model
+```
+
+## Routes
+
+Hash-based, and the open trip is always in the address so no screen can infer
+it from leftover state:
+
+```
+/trips                 My Trips — every trip you own or joined
+/new                   the blank-journal form
+/t/<tripId>/plan       and /budget, /savings, /members, /settings
+/join/<token>          an invitation link
 ```
 
 ## Things that will bite you
 
-**`supabase/schema.sql` is not a migration system.** Editing it does nothing to
-the database. Any change must be pasted into the Supabase SQL Editor by the user
-by hand. Deploying code that expects a new column without that step breaks the
-live app.
+**Migrations are files, not automation.** `supabase/migrations/NNNN_*.sql` is
+version control for the schema and nothing more: editing one does nothing to the
+database. Every new migration must be pasted into the Supabase SQL Editor by the
+user by hand, once, in order. Deploying code that expects a new column without
+that step breaks the live app. Never edit an applied migration — add the next
+one.
 
-**Group size is never fixed.** Equal costs divide by the member count at read
-time (`computeMemberShares`), so shares re-divide automatically as people join.
-Never persist a computed share.
+**Group size is never fixed, and neither is trip count.** Equal costs divide by
+the member count at read time (`computeMemberShares`), so shares re-divide
+automatically as people join or leave. Never persist a computed share, and never
+assume a person has exactly one trip.
+
+**Every figure is grouped by `trip_id` before it is counted.** `summariseTrips`
+in `trips.ts` does the grouping for the dashboard; `useTripData` fetches one
+trip at a time and drops any response whose trip is no longer the one on screen.
+That guard is what stops the trip you just left from flashing up inside the one
+you opened — do not remove it.
 
 **Money maths belongs in `calc.ts`.** Shares stay unrounded internally and are
 rounded only for display, so per-member amounts still sum to the trip total.
@@ -48,7 +74,17 @@ Put new calculations there with a test, not inline in a component.
 **RLS helpers are `SECURITY DEFINER` on purpose.** `is_trip_member()` and
 friends exist so policies on `trip_members` do not recurse into themselves.
 Membership is written only by the `create_trip()` and `accept_invitation()`
-RPCs — there is deliberately no insert policy on `trip_members`.
+RPCs and removed only by `leave_trip()` — there is deliberately no insert or
+delete policy on `trip_members`.
+
+**Owning and joining are different.** Only owners edit, invite, archive,
+restore and delete; only non-owners can leave. `tripPermissions()` is the one
+place that decides, and every rule it states is also enforced in SQL — the UI
+never guards something the database does not. There is no ownership transfer.
+
+**A trip must be archived before it can be deleted.** The `trips_delete` policy
+requires `archived_at is not null`, so deleting is always two deliberate steps
+even if a caller skips the confirmation dialog.
 
 **Auth is Google OAuth, not magic links.** Switched away from emailed links
 because Supabase's built-in mailer caps at ~2/hour, which made the app unusable
@@ -75,17 +111,19 @@ secrets; Google OAuth lives in Google Cloud Console and the Supabase dashboard.
 ## Testing state
 
 `npm test` covers the maths thoroughly (splits re-dividing as members join,
-personal costs, rounding, savings targets and rates, departed trips).
+personal costs, rounding, savings targets and rates, departed trips), plus trip
+status, per-trip permissions, dashboard separation between trips, and routing.
 
-`npm run verify:live` exercises the RLS policies and invitation lifecycle
-against a real project. It signs test accounts up with passwords, so it needs
-the Email provider on with **Confirm email off** while it runs. **It has never
-been run.** The authenticated flows — create trip, invite, join, plan/cost CRUD,
-savings entry — are therefore unverified against a live database.
+`npm run verify:live` exercises the RLS policies, the invitation lifecycle and
+the multi-trip rules against a real project. It signs test accounts up with
+passwords, so it needs the Email provider on with **Confirm email off** while it
+runs. **It has never been run.** The authenticated flows — create trip, invite,
+join, plan/cost CRUD, savings entry, archive, leave, delete — are therefore
+unverified against a live database.
 
 ## Scope
 
 This is a deliberately small MVP. Out of scope unless asked: maps, chat, AI,
-booking, currency conversion, file uploads, real payments. It records numbers
-people type; it never moves money and must never ask for bank, card, or
-identity details.
+booking, currency conversion, file uploads, real payments, ownership transfer.
+It records numbers people type; it never moves money and must never ask for
+bank, card, or identity details.

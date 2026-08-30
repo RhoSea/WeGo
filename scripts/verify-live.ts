@@ -1,9 +1,15 @@
 /**
  * End-to-end check against a real Supabase project.
  *
- * Exercises the Row Level Security policies and the invitation lifecycle with
- * several real accounts, then re-checks the budget split maths against data
- * that actually round-tripped through the database.
+ * Exercises the Row Level Security policies, the invitation lifecycle and the
+ * multi-trip rules with several real accounts, then re-checks the budget split
+ * maths against data that actually round-tripped through the database.
+ *
+ * Covers, among other things: that one trip's costs, savings and members never
+ * reach another; that knowing a trip's id grants nothing; that only owners can
+ * edit, invite, archive, restore and delete; that a trip must be archived
+ * before it can be deleted; that members can leave and owners cannot; and that
+ * deleting one trip leaves every other trip intact.
  *
  * Requires password sign-up with email confirmation switched off, so run it
  * against a scratch project only:
@@ -254,12 +260,166 @@ for (const id of memberIds4) {
     Number.isFinite(p.target) && Number.isFinite(p.remaining) && p.progress >= 0 && p.progress <= 1)
 }
 
+// --- More than one trip ------------------------------------------------------
+console.log('\nMore than one trip')
+const { data: trip2, error: trip2Err } = await friend1.client.rpc('create_trip', {
+  p_name: 'Second journey',
+  p_destination: 'Oslo, Norway',
+  p_departure_date: departure,
+  p_currency: 'NOK',
+})
+check('someone already in a trip can start one of their own', !trip2Err && trip2?.id, trip2Err?.message)
+const trip2Id = trip2.id
+
+const friend1Trips = await friend1.client.from('trips').select('*')
+check('they now see both of their trips', (friend1Trips.data ?? []).length === 2)
+
+const ownerTrips = await owner.client.from('trips').select('*')
+check('the first trip’s owner sees only the trip they are in',
+  (ownerTrips.data ?? []).length === 1 && ownerTrips.data[0].id === tripId)
+
+const guessed = await owner.client.from('trips').select('*').eq('id', trip2Id)
+check('knowing another trip’s id grants nothing', (guessed.data ?? []).length === 0)
+
+await friend1.client.from('costs').insert({
+  trip_id: trip2Id, description: 'Cabin', category: 'accommodation',
+  estimated_amount: 500, split_type: 'equal', created_by: friend1.id,
+})
+await friend1.client.from('savings_entries').insert({
+  trip_id: trip2Id, user_id: friend1.id, amount: 75,
+  entry_date: new Date().toISOString().slice(0, 10),
+})
+
+const firstTripCosts = await owner.client.from('costs').select('*')
+check('a cost written in one trip never appears in another',
+  (firstTripCosts.data ?? []).length === 2 &&
+  firstTripCosts.data.every((c) => c.trip_id === tripId))
+
+const firstTripSavings = await owner.client.from('savings_entries').select('*')
+check('a savings entry written in one trip never appears in another',
+  (firstTripSavings.data ?? []).every((s) => s.trip_id === tripId))
+
+const firstTripMembers = await owner.client.from('trip_members').select('*')
+check('the member lists of two trips do not mix',
+  (firstTripMembers.data ?? []).every((m) => m.trip_id === tripId))
+
+const crossWrite = await owner.client.from('costs').insert({
+  trip_id: trip2Id, description: 'not mine', category: 'other',
+  estimated_amount: 5, split_type: 'equal', created_by: owner.id,
+})
+check('a member of one trip cannot write into another', Boolean(crossWrite.error))
+
+// --- Trip management ---------------------------------------------------------
+console.log('\nTrip management')
+const rename = await owner.client.from('trips')
+  .update({ name: 'Verification trip (renamed)', destination: 'Porto, Portugal', currency: 'GBP' })
+  .eq('id', tripId).select()
+check('the owner can edit the cover page', (rename.data ?? []).length === 1, rename.error?.message)
+
+const memberRename = await friend1.client.from('trips')
+  .update({ name: 'hijacked' }).eq('id', tripId).select()
+check('a member cannot edit the trip', (memberRename.data ?? []).length === 0)
+
+const stealTrip = await owner.client.from('trips')
+  .update({ created_by: friend1.id }).eq('id', tripId).select()
+check('nobody can rewrite who created a trip', Boolean(stealTrip.error))
+
+const memberInvite = await friend1.client.rpc('create_invitation', { p_trip_id: tripId })
+check('a member cannot mint invitations', Boolean(memberInvite.error), 'members must not invite')
+
+const { data: inviteD } = await owner.client.rpc('create_invitation', { p_trip_id: tripId, p_label: 'Held back' })
+check('the owner still can', Boolean(inviteD?.token))
+
+// --- Archiving ---------------------------------------------------------------
+console.log('\nArchiving')
+const earlyDelete = await owner.client.from('trips').delete().eq('id', tripId).select()
+check('a trip that is still live cannot be deleted', (earlyDelete.data ?? []).length === 0)
+
+const memberArchive = await friend1.client.from('trips')
+  .update({ archived_at: new Date().toISOString() }).eq('id', tripId).select()
+check('a member cannot archive the trip', (memberArchive.data ?? []).length === 0)
+
+const archive = await owner.client.from('trips')
+  .update({ archived_at: new Date().toISOString() }).eq('id', tripId).select()
+check('the owner can archive it', (archive.data ?? []).length === 1, archive.error?.message)
+
+const memberSeesArchived = await friend1.client.from('trips').select('*').eq('id', tripId)
+check('members still see an archived trip', (memberSeesArchived.data ?? []).length === 1)
+
+const outsiderSeesArchived = await outsider.client.from('trips').select('*').eq('id', tripId)
+check('an archived trip stays just as private', (outsiderSeesArchived.data ?? []).length === 0)
+
+const archivedInvite = await owner.client.rpc('create_invitation', { p_trip_id: tripId })
+check('an archived trip takes no new invitations', Boolean(archivedInvite.error))
+
+const archivedPreview = await friend2.client.rpc('preview_invitation', { p_token: inviteD.token })
+const archivedPreviewRow = Array.isArray(archivedPreview.data) ? archivedPreview.data[0] : archivedPreview.data
+check('a held link previews an archived trip as archived', archivedPreviewRow?.status === 'archived')
+
+const newcomer = await makeUser('newcomer')
+const archivedAccept = await newcomer.client.rpc('accept_invitation', { p_token: inviteD.token })
+check('an unused link cannot join an archived trip', Boolean(archivedAccept.error))
+
+const memberRestore = await friend1.client.from('trips')
+  .update({ archived_at: null }).eq('id', tripId).select()
+check('a member cannot restore it either', (memberRestore.data ?? []).length === 0)
+
+const restore = await owner.client.from('trips').update({ archived_at: null }).eq('id', tripId).select()
+check('the owner can restore it', (restore.data ?? []).length === 1 && restore.data[0].archived_at === null)
+
+// --- Leaving -----------------------------------------------------------------
+console.log('\nLeaving')
+await friend3.client.from('savings_entries').insert({
+  trip_id: tripId, user_id: friend3.id, amount: 40,
+  entry_date: new Date().toISOString().slice(0, 10),
+})
+
+const ownerLeave = await owner.client.rpc('leave_trip', { p_trip_id: tripId })
+check('the owner cannot leave their own trip', Boolean(ownerLeave.error))
+
+const strangerLeave = await outsider.client.rpc('leave_trip', { p_trip_id: tripId })
+check('someone who is not a member cannot leave it', Boolean(strangerLeave.error))
+
+const leave = await friend3.client.rpc('leave_trip', { p_trip_id: tripId })
+check('a member can leave', !leave.error, leave.error?.message)
+
+const { data: membersAfterLeave } = await owner.client.from('trip_members').select('*').eq('trip_id', tripId)
+check('the traveller list shrinks by one', (membersAfterLeave ?? []).length === 3)
+
+const leftSees = await friend3.client.from('trips').select('*').eq('id', tripId)
+check('someone who left can no longer see the trip', (leftSees.data ?? []).length === 0)
+
+const savingsAfterLeave = await owner.client.from('savings_entries').select('*').eq('trip_id', tripId)
+check('their savings record leaves with them',
+  (savingsAfterLeave.data ?? []).every((s) => s.user_id !== friend3.id))
+
+const sharesAfterLeave = computeMemberShares(costs, membersAfterLeave.map((m) => m.user_id))
+check('the shared cost re-divides between the three who are left',
+  round2(sharesAfterLeave[owner.id].estimated) === 300)
+
 // --- Cleanup -----------------------------------------------------------------
 console.log('\nCleanup')
+const archiveForDelete = await owner.client.from('trips')
+  .update({ archived_at: new Date().toISOString() }).eq('id', tripId).select()
+check('archiving is the step before deleting', (archiveForDelete.data ?? []).length === 1)
+
+const memberDelete = await friend1.client.from('trips').delete().eq('id', tripId).select()
+check('a member cannot delete an archived trip', (memberDelete.data ?? []).length === 0)
+
 const del = await owner.client.from('trips').delete().eq('id', tripId).select()
-check('the owner can delete the trip', (del.data ?? []).length === 1)
+check('the owner can delete an archived trip', (del.data ?? []).length === 1)
 const gone = await owner.client.from('costs').select('*').eq('trip_id', tripId)
 check('deleting the trip removes its data', (gone.data ?? []).length === 0)
+const goneMembers = await owner.client.from('trip_members').select('*').eq('trip_id', tripId)
+check('deleting the trip removes its membership', (goneMembers.data ?? []).length === 0)
+
+const survivor = await friend1.client.from('trips').select('*').eq('id', trip2Id)
+check('deleting one trip leaves another trip standing', (survivor.data ?? []).length === 1)
+const survivorCosts = await friend1.client.from('costs').select('*').eq('trip_id', trip2Id)
+check('and leaves its ledger alone', (survivorCosts.data ?? []).length === 1)
+
+await friend1.client.from('trips').update({ archived_at: new Date().toISOString() }).eq('id', trip2Id)
+await friend1.client.from('trips').delete().eq('id', trip2Id)
 
 console.log(`\n${passed} passed, ${failures.length} failed`)
 if (failures.length) {

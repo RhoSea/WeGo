@@ -139,6 +139,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
   gap: 14px;
 }
 .masthead-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.masthead-actions .btn { white-space: nowrap; }
+.masthead-inner > .wordmark-link { flex: 0 0 auto; }
+.masthead-inner > .trip-switch { flex: 0 1 auto; }
+
+/* On a phone the masthead carries the wordmark, the trip you are in and the
+   way out, so everything but the trip name holds its size. */
+@media (max-width: 560px) {
+  .masthead-inner { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .trip-switch { max-width: 40vw; padding-left: 9px; padding-right: 7px; }
+}
 
 /* Wordmark ---------------------------------------------------------------- */
 

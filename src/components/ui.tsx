@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { initials, toneFor } from '../lib/format'
 import { IconCheck, IconError, IconInfo, IconWarn, PaperPlane } from './art'
 
@@ -6,6 +7,11 @@ import { IconCheck, IconError, IconInfo, IconWarn, PaperPlane } from './art'
  * A bottom sheet on phones, a centred card on desktop. Traps Tab inside itself
  * while open, closes on Escape or a click on the backdrop, and hands focus back
  * to whatever opened it.
+ *
+ * Rendered into the body rather than where it is written: `position: fixed` is
+ * measured against the nearest ancestor with a filter, and the masthead has a
+ * backdrop blur, so a sheet opened from up there would be centred inside the
+ * masthead's own band instead of the window.
  */
 export function Sheet(props: { title: string; onClose: () => void; children: ReactNode }) {
   const onClose = useRef(props.onClose)
@@ -45,7 +51,7 @@ export function Sheet(props: { title: string; onClose: () => void; children: Rea
     }
   }, [])
 
-  return (
+  return createPortal(
     <div
       className="sheet-backdrop"
       onMouseDown={(e) => { if (e.target === e.currentTarget) props.onClose() }}
@@ -65,7 +71,8 @@ export function Sheet(props: { title: string; onClose: () => void; children: Rea
         <hr className="divider" />
         {props.children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

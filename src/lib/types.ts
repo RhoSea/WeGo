@@ -14,6 +14,11 @@ export type CostCategory = (typeof COST_CATEGORIES)[number]
 
 export type SplitType = 'equal' | 'personal'
 
+/** The currencies a trip can be budgeted in. Amounts are never converted. */
+export const CURRENCIES = [
+  'EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'CAD', 'AUD', 'NZD', 'JPY',
+] as const
+
 export interface Trip {
   id: string
   name: string
@@ -22,7 +27,19 @@ export interface Trip {
   currency: string
   created_by: string
   created_at: string
+  /** Set when the owner files the trip away; null while it is still on the desk. */
+  archived_at: string | null
 }
+
+export type TripRole = 'owner' | 'member'
+
+/**
+ * Where a trip sits in the collection. Archived is stored on the trip;
+ * upcoming and past are read off the departure date, so a trip moves between
+ * them on its own as the date passes.
+ */
+export const TRIP_STATUSES = ['upcoming', 'past', 'archived'] as const
+export type TripStatus = (typeof TRIP_STATUSES)[number]
 
 export interface Profile {
   id: string
@@ -34,7 +51,7 @@ export interface TripMember {
   id: string
   trip_id: string
   user_id: string
-  role: 'owner' | 'member'
+  role: TripRole
   joined_at: string
 }
 
@@ -93,5 +110,5 @@ export interface MemberView {
   userId: string
   name: string
   email: string | null
-  role: 'owner' | 'member'
+  role: TripRole
 }

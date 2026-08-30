@@ -11,7 +11,7 @@ interface Preview {
   destination: string | null
   departure_date: string | null
   currency: string | null
-  status: 'valid' | 'used' | 'expired' | 'invalid'
+  status: 'valid' | 'used' | 'expired' | 'invalid' | 'archived'
 }
 
 export const PENDING_INVITE_KEY = 'wego.pendingInvite'
@@ -67,12 +67,13 @@ export function JoinScreen(props: {
     const message =
       status === 'used' ? 'This invitation link has already been used. Ask for a fresh one.'
       : status === 'expired' ? 'This invitation link has expired. Ask for a fresh one.'
+      : status === 'archived' ? 'This trip has been archived, so it is not taking new travellers.'
       : 'This invitation link is not valid.'
     return (
       <div className="centered auth-page">
         <div className="card cut">
           <Wordmark />
-          <span className="stamp bad tilt">Not valid</span>
+          <span className="stamp bad tilt">{status === 'archived' ? 'Archived' : 'Not valid'}</span>
           <Banner kind="error">{message}</Banner>
           <button className="btn block" onClick={props.onCancel}>Continue to WeGo</button>
         </div>
@@ -101,8 +102,9 @@ export function JoinScreen(props: {
             </span>
           </p>
           <p className="small muted">
-            Budgeted in {preview?.currency}. Joining adds you to the shared plan, splits the shared
-            costs one more way, and gives you your own savings target.
+            Budgeted in {preview?.currency}. Joining adds you to this trip only — its plan, its
+            ledger and its travellers. It splits this trip’s shared costs one more way and gives
+            you your own savings target for it.
           </p>
           {error ? <Banner kind="error">{error}</Banner> : null}
           <button className="btn primary block" onClick={() => void join()} disabled={busy}>

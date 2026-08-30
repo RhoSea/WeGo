@@ -1,8 +1,8 @@
-import type { Trip, MemberView } from '../lib/types'
+import type { Trip, MemberView, TripRole } from '../lib/types'
 import type { TripFunding } from '../lib/calc'
 import { formatDate, formatMoney } from '../lib/format'
 import { Avatar, ProgressBar } from './ui'
-import { IconCalendar, IconPin, RouteToDestination } from './art'
+import { IconCalendar, IconPin, IconTag, RouteToDestination } from './art'
 
 function countdownNote(days: number): string {
   if (days > 1) return `${days} days to go!`
@@ -17,11 +17,15 @@ export function TripHeader({
   members,
   funding,
   countdown,
+  role,
+  onManage,
 }: {
   trip: Trip
   members: MemberView[]
   funding: TripFunding
   countdown: number
+  role: TripRole | null
+  onManage: () => void
 }) {
   const pct = Math.round(funding.progress * 100)
   const shown = members.slice(0, 5)
@@ -33,7 +37,15 @@ export function TripHeader({
   return (
     <header className="journal card taped">
       <div className="journal-text">
-        <span className="kicker">Trip journal</span>
+        <div className="row between wrap journal-kicker">
+          <span className="kicker">Trip journal</span>
+          <span className="row journal-tags">
+            {trip.archived_at ? <span className="stamp maybe">archived</span> : null}
+            <button className="btn ghost small" onClick={onManage}>
+              <IconTag size={15} /> {role === 'owner' ? 'Manage trip' : 'Trip details'}
+            </button>
+          </span>
+        </div>
         <h1>{trip.name}</h1>
         <p className="journal-meta">
           <span className="row" style={{ gap: 5 }}><IconPin /> {trip.destination}</span>

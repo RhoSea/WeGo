@@ -1,6 +1,13 @@
--- WeGo — full database schema, Row Level Security policies and RPCs.
--- Paste this whole file into the Supabase SQL editor and run it once.
--- It is idempotent enough to re-run on a fresh project.
+-- 0001 — WeGo's original schema: tables, Row Level Security policies and RPCs.
+--
+-- This is the state the database was in before trips became a collection.
+-- A project that already ran the old supabase/schema.sql has this applied
+-- already; go straight to 0002. A fresh project runs every file in this
+-- directory in order, once each, in the Supabase SQL editor.
+--
+-- Each file runs once. Never re-run an earlier migration after a later one:
+-- 0002 replaces policies and functions defined here, and re-running this file
+-- would put the superseded versions back.
 
 create extension if not exists pgcrypto;
 

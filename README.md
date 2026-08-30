@@ -1,6 +1,6 @@
 # WeGo
 
-A small web app for a group of friends to plan one trip together and track what
+A small web app for groups of friends to plan trips together and track what
 everyone still needs to save. Built with React, TypeScript, Vite and Supabase,
 hosted on GitHub Pages. Sign-in is through Google, so there is no password to
 remember and no email delivery to go wrong.
@@ -9,7 +9,12 @@ It is dressed as a shared travel sketchbook: paper and ink rather than a finance
 dashboard, with postcards, ticket stubs, status stamps and a hand-drawn route
 that fills in as the group saves.
 
-Three screens:
+Signing in opens **My Trips** — a rack of postcards, one per trip you own or
+have joined, showing its destination, departure date, your role, how many
+travellers are going, the estimated budget and how far the fund has come. Filter
+by upcoming, past or archived; open any trip, or start another.
+
+Inside a trip there are four screens:
 
 - **Plan** — shared trip ideas with a status (Idea / Maybe / Confirmed / Booked),
   optional date, link and note. Filter by status, sort by date.
@@ -17,9 +22,15 @@ Three screens:
   each member's estimated and actual share.
 - **Savings** — a private record of what each person has put aside, with a
   target, progress bar, weekly and monthly rate, and on-track status.
+- **Members** — who is coming, and the invitation links that got them there.
 
-The group size is never hardcoded. Shared costs divide by however many members
-the trip has at the moment you look at it.
+Every trip is separate: its own plan, budget, savings, travellers and
+invitations. Nothing crosses between them, and the group size is never
+hardcoded — shared costs divide by however many members that trip has at the
+moment you look at it.
+
+A fifth page, **This trip**, is where the owner edits the cover page and
+archives, restores or deletes the trip, and where everyone else can leave it.
 
 > WeGo only stores numbers people type in. It never moves, holds, or requests
 > real money, and it never asks for bank, card or document details.
@@ -37,8 +48,11 @@ npm run dev             # http://localhost:5173
 ## 2. Supabase configuration
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor**, paste the whole of [`supabase/schema.sql`](supabase/schema.sql)
-   and run it. This creates every table, Row Level Security policy and RPC.
+2. Open **SQL Editor** and run every file in
+   [`supabase/migrations/`](supabase/migrations/) in order, once each. Together
+   they create every table, Row Level Security policy and RPC. If you set this
+   project up before trips became a collection, you have already run `0001`
+   (it was `supabase/schema.sql`) — run only the migrations after it.
 3. Go to **Project Settings → API** and copy:
    - *Project URL* → `VITE_SUPABASE_URL`
    - *anon / public key* → `VITE_SUPABASE_ANON_KEY`
@@ -84,15 +98,26 @@ All seven tables have Row Level Security enabled and no policy is open to the
 public.
 
 - Reading or writing anything in a trip requires a row in `trip_members`,
-  checked by the `is_trip_member()` helper.
+  checked by the `is_trip_member()` helper. Knowing or guessing a trip's id
+  grants nothing, and archiving changes none of that — an archived trip is
+  exactly as private as a live one.
 - Membership itself can only be written by two `SECURITY DEFINER` functions —
   `create_trip()` and `accept_invitation()` — so a client cannot add itself to
-  someone else's trip.
+  someone else's trip, and removed only by `leave_trip()`, which removes only
+  your own and refuses outright for the owner.
+- Managing a trip — editing it, inviting people, archiving, restoring,
+  deleting — is the owner's alone, checked by `is_trip_owner()`. Members can
+  read everything and leave.
+- A trip must be archived before it can be deleted: the delete policy requires
+  `archived_at is not null`. Deleting then cascades to the trip's members,
+  invitations, plan items, costs and savings, and touches no other trip.
+- A trip's `id`, creator and creation date cannot be edited at all — a trigger
+  refuses, so nobody can move a trip to a new owner or forge its age.
 - Savings entries are readable by the whole group but writable only by their
   owner (`user_id = auth.uid()` on insert, update and delete).
-- Invitation tokens are 24 random bytes generated in the database. Accepting one
-  is a single transaction that locks the row (`FOR UPDATE`), marks it accepted,
-  and refuses any later use.
+- Invitation tokens are 24 random bytes generated in the database and belong to
+  exactly one trip. Accepting one is a single transaction that locks the row
+  (`FOR UPDATE`), marks it accepted, and refuses any later use.
 
 ## 3. Testing
 
@@ -104,8 +129,9 @@ npm run preview # serve the production build locally
 
 There is also a live check that runs against a real Supabase project. It creates
 throwaway accounts and asserts that Row Level Security actually holds — that a
-non-member sees nothing, that an invitation cannot be redeemed twice, and that
-nobody can edit someone else's savings:
+non-member sees nothing, that one trip's costs never reach another, that an
+invitation cannot be redeemed twice, that only owners can manage a trip, and
+that nobody can edit someone else's savings:
 
 ```bash
 npm run verify:live     # reads .env
@@ -119,7 +145,11 @@ Point this at a scratch project, never at a project holding a real trip.
 The tests cover the parts that are easy to get quietly wrong: equal splits that
 re-divide as members join, personal costs landing on one person, shares summing
 back to the trip total, savings targets, weekly and monthly rates, the
-under-one-week case, and the departed-trip warning.
+under-one-week case, and the departed-trip warning — plus, for a collection of
+trips, that each card counts only its own trip's costs, savings and members,
+that the same person can be owner of one trip and member of another, that a
+remembered trip is never reopened once it is out of reach, and that a mangled
+trip id in the address falls back to the dashboard.
 
 ## 4. Deployment
 
@@ -168,11 +198,12 @@ npm test && npm run build
 
 ### Two things that do not deploy themselves
 
-**Database changes.** Editing [`supabase/schema.sql`](supabase/schema.sql) does
-nothing to your database — the file is a script, not a migration system. Paste
-the changed SQL into the Supabase SQL Editor yourself. Forgetting this is the
-most likely way to break the live app: the new code deploys expecting a column
-that does not exist yet.
+**Database changes.** Adding a file to
+[`supabase/migrations/`](supabase/migrations/) does nothing to your database —
+they are version control for the schema, not automation. Paste each new
+migration into the Supabase SQL Editor yourself, once, in order. Forgetting this
+is the most likely way to break the live app: the new code deploys expecting a
+column that does not exist yet.
 
 **Environment variables.** Production reads `VITE_SUPABASE_URL` and
 `VITE_SUPABASE_ANON_KEY` from GitHub Actions secrets, not from your local
@@ -186,30 +217,65 @@ gh secret set VITE_SUPABASE_ANON_KEY --repo <owner>/<repo>
 Google OAuth settings live in Google Cloud Console and the Supabase dashboard,
 so they are not in this repo either.
 
-## 5. Inviting friends
+## 5. Trips, invitations and the collection
 
-1. Sign in and create the trip (name, destination, departure date, currency).
-2. Open **Members → Invite a friend**. Optionally label the link with who it is
-   for, then create it.
-3. Copy the link and send it to that one person. Each link is single-use and
-   expires after 30 days; you can revoke an unused one at any time.
-4. They open the link, continue with Google, and land back on the join screen to
-   confirm.
+**Starting a trip.** Sign in, then **Start a trip** from My Trips: name,
+destination, departure date, currency. Whoever creates a trip owns it.
+
+**Inviting friends.** Open the trip, then **Members → Invite a friend**.
+Optionally label the link with who it is for, then create it and send it to that
+one person. Each link belongs to that trip alone, is single-use, and expires
+after 30 days; the owner can revoke an unused one at any time. They open the
+link, continue with Google, and land back on the join screen to confirm.
 
 Everyone sees the same data from any device or country. Budget shares re-divide
 automatically as each new person joins — nothing needs to be re-entered.
+
+**Switching trips.** The luggage tag in the masthead names the trip you are in;
+tap it for the full list, or for My Trips, from anywhere in the app. The trip
+you had open last is marked on the dashboard so you can pick it straight back
+up — unless you have since left it or it has been deleted, in which case it is
+quietly forgotten rather than reopened.
+
+**Archiving.** Owners can file a finished trip away. Nothing is deleted: the
+plan, the ledger and everyone's savings stay exactly as they were, the trip
+moves to the archived shelf, and it stops accepting new travellers until it is
+restored.
+
+**Leaving.** Anyone who joined a trip can leave it, after a confirmation that
+spells out what happens: they come off the traveller list, the shared costs
+re-divide between the people who are left, and their own savings record for that
+trip goes with them. The plan and the budget the group wrote stay put. Owners
+cannot leave their own trip — there is no ownership transfer in this version, so
+they archive or delete it instead.
+
+**Deleting.** Permanent, and only ever available on an archived trip. It asks
+the owner to type the trip's name, then removes that trip and everything in it
+for everybody. Every other trip is untouched.
 
 ## Project layout
 
 ```
 src/lib/calc.ts        all budget and savings maths (pure, unit tested)
-src/lib/calc.test.ts   the test suite
-src/state/             auth session and trip data loading with realtime updates
-src/screens/           Plan, Budget, Savings, Members, sign-in, join, create
+src/lib/trips.ts       trip status, permissions and dashboard summaries
+src/lib/useHashRoute.ts  the routes, including which trip is open
+src/state/             auth session, the trip collection, and one open trip
+src/screens/           My Trips, Plan, Budget, Savings, Members, trip settings,
+                       sign-in, join, create
 src/components/        shared interface pieces and the SVG artwork
 src/styles/            the design system, in four sheets
 public/fonts/          the three self-hosted typefaces
-supabase/schema.sql    tables, RLS policies, RPCs
+supabase/migrations/   tables, RLS policies, RPCs — run in order, once each
+```
+
+Routing is hash-based and always names the open trip, so a link to a page inside
+a trip survives a reload and no screen can infer which trip it is showing:
+
+```
+#/trips                 My Trips
+#/new                   the blank-journal form
+#/t/<tripId>/plan       and /budget, /savings, /members, /settings
+#/join/<token>          an invitation link
 ```
 
 ## 6. The design

@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Trip } from '../lib/types'
+import { CURRENCIES, type Trip } from '../lib/types'
 import { todayISO } from '../lib/format'
 import { Banner, errorMessage } from '../components/ui'
 import { Wordmark } from '../components/art'
 
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'CAD', 'AUD', 'NZD', 'JPY']
-
-export function CreateTripScreen({ onCreated, onSignOut }: {
+export function CreateTripScreen({ onCreated, onCancel, canCancel, onSignOut }: {
   onCreated: (trip: Trip) => void
+  onCancel: () => void
+  /** False for the very first trip, when there is no collection to go back to. */
+  canCancel: boolean
   onSignOut: () => void
 }) {
   const [name, setName] = useState('')
@@ -39,8 +40,9 @@ export function CreateTripScreen({ onCreated, onSignOut }: {
         <span className="kicker">A blank journal</span>
         <h1>Start a trip</h1>
         <p className="small muted">
-          Fill in the cover page. You can invite as many friends as you like once the trip exists,
-          and the shared costs re-divide as each one joins.
+          Fill in the cover page. This trip keeps its own plan, budget, savings and travellers —
+          nothing is shared with any other trip you are in. You can invite as many friends as you
+          like once it exists, and the shared costs re-divide as each one joins.
         </p>
         {error ? <Banner kind="error">{error}</Banner> : null}
         <div className="form-grid">
@@ -70,7 +72,13 @@ export function CreateTripScreen({ onCreated, onSignOut }: {
                 disabled={busy || !name.trim() || !destination.trim() || !departureDate}>
           {busy ? 'Opening the journal…' : 'Create trip'}
         </button>
-        <button className="btn ghost block small" type="button" onClick={onSignOut}>Sign out</button>
+        {canCancel ? (
+          <button className="btn ghost block small" type="button" onClick={onCancel}>
+            Back to my trips
+          </button>
+        ) : (
+          <button className="btn ghost block small" type="button" onClick={onSignOut}>Sign out</button>
+        )}
       </form>
     </div>
   )

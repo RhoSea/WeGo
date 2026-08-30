@@ -3,6 +3,7 @@ import { supabase, inviteUrl } from '../lib/supabase'
 import type { Invitation } from '../lib/types'
 import { formatDate } from '../lib/format'
 import type { TripData } from '../state/useTripData'
+import { tripPermissions } from '../lib/trips'
 import { Avatar, Banner, Empty, errorMessage } from '../components/ui'
 import { ArtEnvelope, IconPlus, PaperPlane, Postmark } from '../components/art'
 
@@ -14,7 +15,11 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
   const [copied, setCopied] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [nameSaved, setNameSaved] = useState(false)
-  const tripId = data.trip!.id
+  const trip = data.trip!
+  const tripId = trip.id
+  // Inviting people is managing the trip, so it belongs to the owner. The
+  // database enforces the same rule in create_invitation().
+  const can = tripPermissions(data.role ?? 'member', trip)
 
   const loadInvites = useCallback(async () => {
     const { data: rows, error: err } = await supabase
@@ -119,23 +124,35 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
         <button className="btn block" type="submit">{nameSaved ? 'Saved ✓' : 'Save name'}</button>
       </form>
 
-      <form className="card invite-card taped tape-teal" onSubmit={createInvite}>
-        <h3>Invite a friend</h3>
-        <p className="small muted">
-          Each link works once, for one person, and expires after 30 days. Send it to them
-          directly — anyone holding the link can join.
-        </p>
-        <input
-          maxLength={60}
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Who is this link for? (optional)"
-          aria-label="Who is this invitation for"
-        />
-        <button className="btn primary block" type="submit" disabled={busy}>
-          <IconPlus /> {busy ? 'Writing the ticket…' : 'Create an invitation link'}
-        </button>
-      </form>
+      {can.canInvite ? (
+        <form className="card invite-card taped tape-teal" onSubmit={createInvite}>
+          <h3>Invite a friend</h3>
+          <p className="small muted">
+            Each link works once, for one person, and expires after 30 days. It adds them to
+            <b> {trip.name}</b> and to no other trip. Send it to them directly — anyone holding the
+            link can join.
+          </p>
+          <input
+            maxLength={60}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Who is this link for? (optional)"
+            aria-label="Who is this invitation for"
+          />
+          <button className="btn primary block" type="submit" disabled={busy}>
+            <IconPlus /> {busy ? 'Writing the ticket…' : 'Create an invitation link'}
+          </button>
+        </form>
+      ) : (
+        <div className="card">
+          <h3>Inviting people</h3>
+          <p className="small muted">
+            {data.role === 'owner'
+              ? 'This trip is archived, so it is closed to new travellers. Restore it from the trip page to invite anyone else.'
+              : 'Only the trip owner can invite people to this trip. Ask them for a link.'}
+          </p>
+        </div>
+      )}
 
       <div className="page-title">
         <h3>Invitations</h3>
@@ -144,7 +161,9 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
 
       {invites.length === 0 ? (
         <Empty art={<ArtEnvelope />} title="No tickets written yet">
-          Create an invitation link above and send it to whoever is coming.
+          {can.canInvite
+            ? 'Create an invitation link above and send it to whoever is coming.'
+            : 'Nobody has been invited to this trip yet.'}
         </Empty>
       ) : (
         <div className="stack">
@@ -175,9 +194,11 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
                         <button className="btn small grow" onClick={() => void copy(invite.token)}>
                           {copied === invite.token ? 'Copied ✓' : 'Copy link'}
                         </button>
-                        <button className="btn small danger" onClick={() => void revoke(invite)}>
-                          Revoke
-                        </button>
+                        {can.canEdit ? (
+                          <button className="btn small danger" onClick={() => void revoke(invite)}>
+                            Revoke
+                          </button>
+                        ) : null}
                       </div>
                     </>
                   )}

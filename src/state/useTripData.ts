@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { memberLabel } from '../lib/trips'
 import type {
   Cost, MemberView, PlanItem, Profile, SavingsEntry, Trip, TripMember,
 } from '../lib/types'
@@ -15,24 +16,31 @@ export interface TripData {
   error: string | null
   refresh: () => Promise<void>
   nameFor: (userId: string | null) => string
+  /** The viewer's own role in this trip, once it has loaded. */
+  role: 'owner' | 'member' | null
 }
 
-function labelFor(profile: Profile | undefined, userId: string): string {
-  if (profile?.display_name?.trim()) return profile.display_name.trim()
-  if (profile?.email) return profile.email.split('@')[0]
-  return `Member ${userId.slice(0, 6)}`
+interface LoadedTrip {
+  trip: Trip | null
+  members: MemberView[]
+  planItems: PlanItem[]
+  costs: Cost[]
+  savings: SavingsEntry[]
 }
 
-export function useTripData(tripId: string | null): TripData {
-  const [trip, setTrip] = useState<Trip | null>(null)
-  const [members, setMembers] = useState<MemberView[]>([])
-  const [planItems, setPlanItems] = useState<PlanItem[]>([])
-  const [costs, setCosts] = useState<Cost[]>([])
-  const [savings, setSavings] = useState<SavingsEntry[]>([])
+const EMPTY: LoadedTrip = { trip: null, members: [], planItems: [], costs: [], savings: [] }
+
+export function useTripData(tripId: string | null, userId: string | null): TripData {
+  const [state, setState] = useState(EMPTY)
   const [loading, setLoading] = useState(Boolean(tripId))
   const [error, setError] = useState<string | null>(null)
   const inFlight = useRef(false)
   const queued = useRef(false)
+
+  // Read during render so an in-flight response can tell whether the trip it
+  // was fetched for is still the one on screen.
+  const openTripId = useRef(tripId)
+  openTripId.current = tripId
 
   const refresh = useCallback(async () => {
     if (!tripId) return
@@ -49,42 +57,48 @@ export function useTripData(tripId: string | null): TripData {
         supabase.from('savings_entries').select('*').eq('trip_id', tripId).order('entry_date', { ascending: false }),
       ])
 
+      // Someone switched trips while this was in the air. Dropping it is what
+      // stops the trip you just left from flashing up inside the one you opened.
+      if (openTripId.current !== tripId) return
+
       const failure = [tripRes, memberRes, profileRes, planRes, costRes, savingRes].find((r) => r.error)
       if (failure?.error) throw failure.error
 
       const profiles = new Map((profileRes.data as Profile[] ?? []).map((p) => [p.id, p]))
 
-      setTrip((tripRes.data as Trip) ?? null)
-      setMembers(
-        ((memberRes.data as TripMember[]) ?? []).map((m) => ({
+      setState({
+        trip: (tripRes.data as Trip) ?? null,
+        members: ((memberRes.data as TripMember[]) ?? []).map((m) => ({
           userId: m.user_id,
           role: m.role,
-          name: labelFor(profiles.get(m.user_id), m.user_id),
+          name: memberLabel(profiles.get(m.user_id), m.user_id),
           email: profiles.get(m.user_id)?.email ?? null,
         })),
-      )
-      setPlanItems((planRes.data as PlanItem[]) ?? [])
-      setCosts((costRes.data as Cost[]) ?? [])
-      setSavings((savingRes.data as SavingsEntry[]) ?? [])
+        planItems: (planRes.data as PlanItem[]) ?? [],
+        costs: (costRes.data as Cost[]) ?? [],
+        savings: (savingRes.data as SavingsEntry[]) ?? [],
+      })
       setError(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load the trip.')
+      if (openTripId.current === tripId) {
+        setError(err instanceof Error ? err.message : 'Could not load the trip.')
+      }
     } finally {
       inFlight.current = false
-      setLoading(false)
       if (queued.current) { queued.current = false; void refreshRef.current() }
+      else if (openTripId.current === tripId) setLoading(false)
     }
   }, [tripId])
 
   const refreshRef = useRef(refresh)
   refreshRef.current = refresh
 
+  // Switching trips empties the screen before the new one is asked for, so no
+  // figure on the page has ever been computed from two different trips at once.
   useEffect(() => {
-    if (!tripId) {
-      setTrip(null); setMembers([]); setPlanItems([]); setCosts([]); setSavings([])
-      setLoading(false)
-      return
-    }
+    setState(EMPTY)
+    setError(null)
+    if (!tripId) { setLoading(false); return }
     setLoading(true)
     void refresh()
   }, [tripId, refresh])
@@ -112,12 +126,18 @@ export function useTripData(tripId: string | null): TripData {
     return () => window.removeEventListener('focus', onFocus)
   }, [refresh])
 
+  const { trip, members, planItems, costs, savings } = state
   const memberIds = useMemo(() => members.map((m) => m.userId), [members])
   const nameFor = useCallback(
-    (userId: string | null) =>
-      (userId && members.find((m) => m.userId === userId)?.name) || 'Unknown',
+    (id: string | null) => (id && members.find((m) => m.userId === id)?.name) || 'Unknown',
     [members],
   )
+  const role = useMemo(
+    () => members.find((m) => m.userId === userId)?.role ?? null,
+    [members, userId],
+  )
 
-  return { trip, members, memberIds, planItems, costs, savings, loading, error, refresh, nameFor }
+  return {
+    trip, members, memberIds, planItems, costs, savings, loading, error, refresh, nameFor, role,
+  }
 }

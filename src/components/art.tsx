@@ -438,3 +438,105 @@ export function ArtEnvelope({ size = 64 }: IconProps) {
     </svg>
   )
 }
+
+/* -------------------------------------------------------------------------
+   Trip collection — the dashboard, the switcher and trip management
+------------------------------------------------------------------------- */
+
+/** A stack of postcards: the collection of trips itself. */
+export function IconTrips({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <rect x="2.6" y="7.4" width="14.6" height="11.2" rx="2.2" />
+      <path d="M6.4 4.6h11.8a2.6 2.6 0 0 1 2.6 2.6v8.2" />
+      <path d="M6.2 11.4h5M6.2 14.6h3" />
+    </svg>
+  )
+}
+
+/** A drawer with the front panel pulled down — filing a trip away. */
+export function IconArchive({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <rect x="3" y="4.4" width="18" height="4.4" rx="1.6" />
+      <path d="M4.8 8.8v9.2a2 2 0 0 0 2 2h10.4a2 2 0 0 0 2-2V8.8" />
+      <path d="M9.8 12.6h4.4" />
+    </svg>
+  )
+}
+
+/** The same drawer, opening again. */
+export function IconRestore({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <rect x="3" y="4.4" width="18" height="4.4" rx="1.6" />
+      <path d="M4.8 8.8v9.2a2 2 0 0 0 2 2h10.4a2 2 0 0 0 2-2V8.8" />
+      <path d="M12 17.4v-5.6M9.4 14.2 12 11.6l2.6 2.6" />
+    </svg>
+  )
+}
+
+/** A luggage tag on a loop of string — the cover page of a trip. */
+export function IconTag({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M11.4 3.2H19a1.8 1.8 0 0 1 1.8 1.8v7.6a2 2 0 0 1-.6 1.4l-5.6 5.6a2 2 0 0 1-2.8 0l-6.6-6.6a2 2 0 0 1 0-2.8L10 3.8a2 2 0 0 1 1.4-.6Z" />
+      <circle cx="16.4" cy="7.6" r="1.5" />
+    </svg>
+  )
+}
+
+/** A door with an arrow going out — leaving a trip. */
+export function IconLeave({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M14 4.4H6.6a2 2 0 0 0-2 2v11.2a2 2 0 0 0 2 2H14" />
+      <path d="M11 12h9.2M17 8.6l3.4 3.4-3.4 3.4" />
+    </svg>
+  )
+}
+
+export function IconTrash({ size = 18, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="M4.4 6.6h15.2M9.4 6.6V4.8a1.4 1.4 0 0 1 1.4-1.4h2.4a1.4 1.4 0 0 1 1.4 1.4v1.8" />
+      <path d="M6.6 6.6 7.6 19a1.8 1.8 0 0 0 1.8 1.6h5.2a1.8 1.8 0 0 0 1.8-1.6l1-12.4" />
+      <path d="M10.4 10.6v6M13.6 10.6v6" />
+    </svg>
+  )
+}
+
+
+export function IconChevronDown({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" {...stroke}>
+      <path d="m5.5 9 6.5 6.5L18.5 9" />
+    </svg>
+  )
+}
+
+/**
+ * A postcard rack for the empty dashboard: three cards pinned at angles,
+ * waiting for the first journey to be written on one.
+ */
+export function ArtPostcards({ size = 96 }: IconProps) {
+  return (
+    <svg width={size} height={size * 0.72} viewBox="0 0 120 86" aria-hidden="true" className="empty-art">
+      <g transform="rotate(-8 30 46)">
+        <rect x="6" y="26" width="44" height="32" rx="4" fill="var(--card)" stroke="currentColor" strokeWidth="2.2" />
+        <path d="M12 34h20M12 40h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity=".55" />
+      </g>
+      <g transform="rotate(6 92 44)">
+        <rect x="70" y="24" width="44" height="32" rx="4" fill="var(--card)" stroke="currentColor" strokeWidth="2.2" />
+        <rect x="98" y="28" width="12" height="11" rx="1.6" fill="var(--gold-wash)" stroke="var(--coral-ink)" strokeWidth="1.5" strokeDasharray="2.6 2" />
+        <path d="M75 46h22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity=".55" />
+      </g>
+      <g transform="rotate(-2 60 42)">
+        <rect x="36" y="16" width="48" height="36" rx="4" fill="var(--card)" stroke="currentColor" strokeWidth="2.4" />
+        <path d="M36 40c8-6 13 2 20-3s14-6 28 1" fill="none" stroke="var(--teal)" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="72" cy="26" r="5" fill="var(--gold)" opacity=".85" />
+      </g>
+      <path d="M8 74h104" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 6" opacity=".4" />
+    </svg>
+  )
+}
