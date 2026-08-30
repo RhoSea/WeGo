@@ -135,6 +135,53 @@ The Vite `base` path comes from the repository name automatically, so a rename
 needs no code change. Routing is hash-based, which means deep links such as
 `.../#/join/<token>` work on Pages without a custom 404 rule.
 
+### Making a change
+
+Push to `main` and the site updates itself:
+
+```
+git push  →  npm ci  →  npm test  →  npm run build  →  published to Pages
+```
+
+It takes a minute or two end to end. Worth knowing:
+
+- **The tests gate the deploy.** If `npm test` fails the workflow stops and the
+  live site keeps serving the previous version, so a broken build cannot reach
+  anyone.
+- **Only `main` deploys.** Work on a branch and nothing ships until you merge.
+- **Anyone with the app already open needs to refresh.** Asset filenames are
+  content-hashed so there is no stale-cache problem, but an open tab will not
+  reload on its own.
+
+Check on a running deploy with `gh run watch`, or `gh run list --limit 3` for
+recent history.
+
+Save yourself a round trip by running the same checks locally first:
+
+```bash
+npm test && npm run build
+```
+
+### Two things that do not deploy themselves
+
+**Database changes.** Editing [`supabase/schema.sql`](supabase/schema.sql) does
+nothing to your database — the file is a script, not a migration system. Paste
+the changed SQL into the Supabase SQL Editor yourself. Forgetting this is the
+most likely way to break the live app: the new code deploys expecting a column
+that does not exist yet.
+
+**Environment variables.** Production reads `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` from GitHub Actions secrets, not from your local
+`.env`. If you move to a different Supabase project, update both:
+
+```bash
+gh secret set VITE_SUPABASE_URL --repo <owner>/<repo>
+gh secret set VITE_SUPABASE_ANON_KEY --repo <owner>/<repo>
+```
+
+Google OAuth settings live in Google Cloud Console and the Supabase dashboard,
+so they are not in this repo either.
+
 ## 5. Inviting friends
 
 1. Sign in and create the trip (name, destination, departure date, currency).
