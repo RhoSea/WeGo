@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/format'
 import { Banner, errorMessage } from '../components/ui'
+import { IconCalendar, IconPin, PaperPlane, Wordmark } from '../components/art'
 import { SignInScreen } from './SignIn'
 
 interface Preview {
@@ -35,7 +36,7 @@ export function JoinScreen(props: {
   }, [props.token])
 
   useEffect(() => {
-    // Survive the round trip through the emailed sign-in link.
+    // Survive the round trip through Google sign-in.
     try { localStorage.setItem(PENDING_INVITE_KEY, props.token) } catch { /* private mode */ }
     void load()
   }, [load, props.token])
@@ -50,7 +51,14 @@ export function JoinScreen(props: {
   }
 
   if (loading) {
-    return <div className="centered"><div className="card"><p className="muted">Checking invitation…</p></div></div>
+    return (
+      <div className="centered">
+        <div className="card cut center loader-card" role="status">
+          <span className="loader-plane"><PaperPlane size={30} /></span>
+          <p className="hand">Checking the ticket…</p>
+        </div>
+      </div>
+    )
   }
 
   const status = preview?.status ?? 'invalid'
@@ -61,9 +69,10 @@ export function JoinScreen(props: {
       : status === 'expired' ? 'This invitation link has expired. Ask for a fresh one.'
       : 'This invitation link is not valid.'
     return (
-      <div className="centered">
-        <div className="card">
-          <div className="brand"><b>WeGo</b></div>
+      <div className="centered auth-page">
+        <div className="card cut">
+          <Wordmark />
+          <span className="stamp bad tilt">Not valid</span>
           <Banner kind="error">{message}</Banner>
           <button className="btn block" onClick={props.onCancel}>Continue to WeGo</button>
         </div>
@@ -74,19 +83,40 @@ export function JoinScreen(props: {
   if (!props.signedIn) return <SignInScreen invitedTo={preview?.trip_name ?? undefined} />
 
   return (
-    <div className="centered">
-      <div className="card">
-        <div className="brand"><b>WeGo</b></div>
-        <h2>Join {preview?.trip_name}</h2>
-        <p className="small muted">
-          {preview?.destination} · leaving {formatDate(preview?.departure_date ?? null)} · budgeted in {preview?.currency}
-        </p>
-        {error ? <Banner kind="error">{error}</Banner> : null}
-        <button className="btn primary block" onClick={() => void join()} disabled={busy}>
-          {busy ? 'Joining…' : 'Join this trip'}
-        </button>
-        <button className="btn ghost block small" onClick={props.onCancel}>Not now</button>
-      </div>
+    <div className="centered auth-page">
+      <article className="ticket boarding">
+        <div className="ticket-main">
+          <div className="row between">
+            <Wordmark />
+            <span className="stamp teal">Invitation</span>
+          </div>
+          <hr className="divider" />
+          <span className="kicker">You are invited to</span>
+          <h1>{preview?.trip_name}</h1>
+          <p className="journal-meta">
+            <span className="row" style={{ gap: 5 }}><IconPin /> {preview?.destination}</span>
+            <span className="dot" aria-hidden="true" />
+            <span className="row" style={{ gap: 5 }}>
+              <IconCalendar /> {formatDate(preview?.departure_date ?? null)}
+            </span>
+          </p>
+          <p className="small muted">
+            Budgeted in {preview?.currency}. Joining adds you to the shared plan, splits the shared
+            costs one more way, and gives you your own savings target.
+          </p>
+          {error ? <Banner kind="error">{error}</Banner> : null}
+          <button className="btn primary block" onClick={() => void join()} disabled={busy}>
+            {busy ? 'Joining…' : 'Join this trip'}
+          </button>
+          <button className="btn ghost block small" onClick={props.onCancel}>Not now</button>
+        </div>
+        <div className="ticket-stub">
+          <span className="kicker">Boarding pass</span>
+          <p className="stub-line">Admit one traveller</p>
+          <p className="tiny faint">This ticket works once, for you.</p>
+          <PaperPlane size={22} className="stub-plane" />
+        </div>
+      </article>
     </div>
   )
 }

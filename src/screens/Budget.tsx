@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { COST_CATEGORIES, type Cost, type CostCategory, type SplitType } from '../lib/types'
-import { computeBudgetTotals, computeMemberShares } from '../lib/calc'
+import { computeBudgetTotals, computeMemberShares, equalShare } from '../lib/calc'
 import { formatMoney, titleCase } from '../lib/format'
 import type { TripData } from '../state/useTripData'
-import { Banner, Empty, Sheet, Stat, errorMessage } from '../components/ui'
+import { Banner, Empty, LedgerRow, Sheet, Stat, errorMessage } from '../components/ui'
+import { ArtReceipt, IconPlus, SketchBar, seedFrom } from '../components/art'
 
 type Draft = {
   description: string
@@ -62,41 +63,78 @@ export function BudgetScreen({ data, userId }: { data: TripData; userId: string 
     await data.refresh()
   }
 
-  const usedCategories = COST_CATEGORIES.filter(
-    (c) => totals.byCategory[c].estimated > 0 || totals.byCategory[c].actual > 0,
-  )
+  // Biggest first: the chart answers "where does the money go" at a glance.
+  const chartRows = useMemo(() => {
+    return COST_CATEGORIES
+      .map((category) => ({ category, ...totals.byCategory[category] }))
+      .filter((row) => row.estimated > 0 || row.actual > 0)
+      .sort((a, b) => Math.max(b.estimated, b.actual) - Math.max(a.estimated, a.actual))
+  }, [totals])
+
+  const chartMax = chartRows.reduce((max, r) => Math.max(max, r.estimated, r.actual), 0)
+  const shared = data.costs.filter((c) => c.split_type === 'equal')
+  const personal = data.costs.filter((c) => c.split_type === 'personal')
+  const headCount = data.members.length
 
   return (
     <>
       {error ? <Banner kind="error">{error}</Banner> : null}
 
-      <div className="card">
-        <div className="row between">
-          <h2>Trip budget</h2>
-          <span className="small muted">
-            {data.members.length} {data.members.length === 1 ? 'member' : 'members'}
-          </span>
-        </div>
-        <div className="split">
-          <Stat label="Estimated" value={formatMoney(totals.estimated, currency)} />
-          <Stat label="Actual so far" value={formatMoney(totals.actual, currency)} />
-        </div>
-        <button className="btn primary block" onClick={() => setEditing('new')}>Add a cost</button>
+      <div className="page-title">
+        <h2>The ledger</h2>
+        <span className="hand">what it all adds up to</span>
       </div>
 
-      {usedCategories.length > 0 ? (
+      <div className="card">
+        <div className="split three">
+          <Stat label="Estimated" value={formatMoney(totals.estimated, currency)} accent="teal" />
+          <Stat label="Spent so far" value={formatMoney(totals.actual, currency)} accent="coral" />
+          <Stat
+            label="Per traveller"
+            value={formatMoney(equalShare(totals.estimated, headCount), currency)}
+            hint={`if every cost were split ${headCount} ${headCount === 1 ? 'way' : 'ways'}`}
+            accent="gold"
+          />
+        </div>
+        <button className="btn primary block" onClick={() => setEditing('new')}>
+          <IconPlus /> Add a cost
+        </button>
+      </div>
+
+      {chartRows.length > 0 ? (
         <div className="card">
-          <h2>By category</h2>
-          <div>
-            {usedCategories.map((category) => (
-              <div className="kv" key={category}>
-                <span>{titleCase(category)}</span>
-                <span className="num">
-                  {formatMoney(totals.byCategory[category].estimated, currency)}
-                  <span className="muted small">
-                    {' · actual '}{formatMoney(totals.byCategory[category].actual, currency)}
+          <div className="row between wrap">
+            <h3>Where the money goes</h3>
+            <span className="chart-key tiny muted">
+              <span className="key-swatch ghost" aria-hidden="true" /> estimated
+              <span className="key-swatch" aria-hidden="true" /> spent
+            </span>
+          </div>
+          <div className="chart">
+            {chartRows.map((row) => (
+              <div className="chart-row" key={row.category}>
+                <div className="row between chart-labels">
+                  <span className="chart-name">{titleCase(row.category)}</span>
+                  <span className="num tiny">
+                    {formatMoney(row.estimated, currency)}
+                    {row.actual > 0 ? (
+                      <span className="faint"> · {formatMoney(row.actual, currency)} spent</span>
+                    ) : null}
                   </span>
-                </span>
+                </div>
+                <div className="chart-track">
+                  <SketchBar
+                    ghost
+                    fraction={chartMax > 0 ? row.estimated / chartMax : 0}
+                    color={`var(--cat-${row.category})`}
+                    seed={seedFrom(row.category)}
+                  />
+                  <SketchBar
+                    fraction={chartMax > 0 ? row.actual / chartMax : 0}
+                    color={`var(--cat-${row.category})`}
+                    seed={seedFrom(`${row.category}-actual`)}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -104,65 +142,57 @@ export function BudgetScreen({ data, userId }: { data: TripData; userId: string 
       ) : null}
 
       <div className="card">
-        <h2>Each member&rsquo;s share</h2>
+        <h3>Each traveller&rsquo;s share</h3>
         <p className="small muted">
-          Shared costs are split between all {data.members.length} current
-          {data.members.length === 1 ? ' member' : ' members'}. Personal costs go entirely to one person.
+          Shared costs are split between all {headCount} current
+          {headCount === 1 ? ' traveller' : ' travellers'}; personal costs go entirely to one person.
+          Shares re-divide the moment somebody joins.
         </p>
-        <div>
+        <div className="ledger">
           {data.members.map((member) => (
-            <div className="kv" key={member.userId}>
-              <span className="truncate">
-                {member.name}{member.userId === userId ? ' (you)' : ''}
-              </span>
-              <span className="num">
-                {formatMoney(shares[member.userId]?.estimated ?? 0, currency)}
-                <span className="muted small">
-                  {' · actual '}{formatMoney(shares[member.userId]?.actual ?? 0, currency)}
-                </span>
-              </span>
-            </div>
+            <LedgerRow
+              key={member.userId}
+              name={<>{member.name}{member.userId === userId ? ' (you)' : ''}</>}
+              amount={formatMoney(shares[member.userId]?.estimated ?? 0, currency)}
+              hint={
+                (shares[member.userId]?.actual ?? 0) > 0
+                  ? `· ${formatMoney(shares[member.userId].actual, currency)} spent`
+                  : undefined
+              }
+            />
           ))}
+          <LedgerRow total name="Whole trip" amount={formatMoney(totals.estimated, currency)} />
         </div>
       </div>
 
-      <div className="list">
-        <h2>Costs</h2>
-        {data.costs.length === 0 ? (
-          <Empty>No costs yet. Add flights, a place to stay, or anything else you expect to pay for.</Empty>
-        ) : (
-          data.costs.map((cost) => (
-            <article className="card tight" key={cost.id}>
-              <div className="row between">
-                <h3 className="grow">{cost.description}</h3>
-                <span className="pill">{cost.category}</span>
-              </div>
-              <div className="row between">
-                <span className="small muted">
-                  {cost.split_type === 'equal'
-                    ? 'Split equally'
-                    : `Personal · ${data.nameFor(cost.assigned_to)}`}
-                </span>
-                <span className="num strong">{formatMoney(cost.estimated_amount, currency)}</span>
-              </div>
-              {cost.actual_amount !== null ? (
-                <div className="row between small muted">
-                  <span>Actual</span>
-                  <span className="num">{formatMoney(cost.actual_amount, currency)}</span>
-                </div>
-              ) : null}
-              {cost.note ? <p className="small">{cost.note}</p> : null}
-              <div className="row between">
-                <span className="small muted">Added by {data.nameFor(cost.created_by)}</span>
-                <span className="row">
-                  <button className="btn ghost small" onClick={() => setEditing(cost)}>Edit</button>
-                  <button className="btn ghost small danger" onClick={() => void remove(cost)}>Delete</button>
-                </span>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
+      {data.costs.length === 0 ? (
+        <Empty art={<ArtReceipt />} title="Nothing on the bill yet">
+          Add flights, a place to stay, or anything else you expect to pay for.
+        </Empty>
+      ) : (
+        <>
+          <CostGroup
+            title="Shared costs"
+            note={`split ${headCount} ${headCount === 1 ? 'way' : 'ways'}`}
+            costs={shared}
+            data={data}
+            currency={currency}
+            headCount={headCount}
+            onEdit={setEditing}
+            onRemove={remove}
+          />
+          <CostGroup
+            title="Personal costs"
+            note="charged to one person"
+            costs={personal}
+            data={data}
+            currency={currency}
+            headCount={headCount}
+            onEdit={setEditing}
+            onRemove={remove}
+          />
+        </>
+      )}
 
       {editing ? (
         <CostForm
@@ -173,6 +203,62 @@ export function BudgetScreen({ data, userId }: { data: TripData; userId: string 
         />
       ) : null}
     </>
+  )
+}
+
+function CostGroup(props: {
+  title: string
+  note: string
+  costs: Cost[]
+  data: TripData
+  currency: string
+  headCount: number
+  onEdit: (cost: Cost) => void
+  onRemove: (cost: Cost) => Promise<void>
+}) {
+  if (props.costs.length === 0) return null
+  const { currency, data } = props
+  return (
+    <section className="cost-group">
+      <div className="row between wrap group-head">
+        <h3>{props.title}</h3>
+        <span className={`stamp ${props.title === 'Shared costs' ? 'teal' : 'booked'}`}>{props.note}</span>
+      </div>
+      <div className="cost-list">
+        {props.costs.map((cost) => (
+          <article className="card tight cost-card liftable" key={cost.id}>
+            <span className="cat-chip" style={{ ['--cat' as string]: `var(--cat-${cost.category})` }}>
+              <i aria-hidden="true" />{titleCase(cost.category)}
+            </span>
+            <div className="row between top">
+              <h4 className="grow cost-title">{cost.description}</h4>
+              <span className="cost-amount num">{formatMoney(cost.estimated_amount, currency)}</span>
+            </div>
+            <div className="row between wrap cost-meta">
+              <span className="small muted">
+                {cost.split_type === 'equal'
+                  ? `${formatMoney(equalShare(cost.estimated_amount, props.headCount), currency)} each`
+                  : `All of it: ${data.nameFor(cost.assigned_to)}`}
+              </span>
+              {cost.actual_amount !== null ? (
+                <span className="small num muted">
+                  {formatMoney(cost.actual_amount, currency)} actually spent
+                </span>
+              ) : null}
+            </div>
+            {cost.note ? <p className="small cost-note">{cost.note}</p> : null}
+            <hr className="divider" />
+            <div className="row between">
+              <span className="tiny faint truncate">Added by {data.nameFor(cost.created_by)}</span>
+              <span className="row" style={{ gap: 2 }}>
+                <button className="btn ghost small" onClick={() => props.onEdit(cost)}>Edit</button>
+                <button className="btn ghost small danger" onClick={() => void props.onRemove(cost)}>Delete</button>
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -205,6 +291,7 @@ function CostForm(props: {
   )
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((d) => ({ ...d, [key]: value }))
+  const members = props.data.members.length
 
   return (
     <Sheet title={props.cost ? 'Edit cost' : 'Add a cost'} onClose={props.onClose}>
@@ -264,7 +351,7 @@ function CostForm(props: {
             onChange={(e) => set('split_type', e.target.value as SplitType)}
           >
             <option value="equal">Split equally</option>
-            <option value="personal">One member</option>
+            <option value="personal">One traveller</option>
           </select>
         </label>
         {draft.split_type === 'personal' ? (
@@ -275,13 +362,21 @@ function CostForm(props: {
               value={draft.assigned_to}
               onChange={(e) => set('assigned_to', e.target.value)}
             >
-              <option value="">Choose a member…</option>
+              <option value="">Choose a traveller…</option>
               {props.data.members.map((m) => (
                 <option key={m.userId} value={m.userId}>{m.name}</option>
               ))}
             </select>
           </label>
-        ) : null}
+        ) : (
+          <p className="full tiny muted split-hint">
+            Split equally means {members} {members === 1 ? 'person pays' : 'people each pay'}{' '}
+            {draft.estimated_amount && Number.isFinite(Number(draft.estimated_amount))
+              ? formatMoney(equalShare(Number(draft.estimated_amount), members), props.data.trip?.currency ?? 'EUR')
+              : 'a share'}
+            . It re-divides whenever somebody joins.
+          </p>
+        )}
         <label className="field full">
           Note (optional)
           <textarea maxLength={2000} value={draft.note} onChange={(e) => set('note', e.target.value)} />

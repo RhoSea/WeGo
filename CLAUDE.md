@@ -25,6 +25,8 @@ src/lib/calc.ts       ALL budget and savings maths, pure and unit tested
 src/lib/calc.test.ts  the suite that guards it
 src/state/            auth session + trip data loading, realtime, refetch
 src/screens/          Plan, Budget, Savings, Members, SignIn, Join, CreateTrip
+src/components/       ui.tsx (shared pieces), art.tsx (all SVG), Nav, TripHeader
+src/styles/           tokens → base → components → screens, imported by styles.css
 supabase/schema.sql   tables, RLS policies, RPCs — the security model
 ```
 
@@ -51,6 +53,21 @@ RPCs — there is deliberately no insert policy on `trip_members`.
 **Auth is Google OAuth, not magic links.** Switched away from emailed links
 because Supabase's built-in mailer caps at ~2/hour, which made the app unusable
 for a group. Do not reintroduce email sign-in without asking.
+
+**The design is a paper sketchbook, and its rules live in `tokens.css`.**
+Never hard-code a colour: use the custom properties. Each travel ink has three
+strengths — `--teal` fills illustrations, `--teal-ink` is the only one dark
+enough for text (4.5:1 on paper), `--teal-wash` is the tint behind it. Two class
+names look alike and are not: `.hand` sets the handwriting face (Caveat, decorative
+text only), `.card.cut` gives a card its unevenly cut corners.
+
+**Illustration is code, not assets.** Everything drawn lives in
+`src/components/art.tsx`. No icon library, no stock imagery, no new dependency
+for a picture.
+
+**Motion must degrade to nothing.** `prefers-reduced-motion` zeroes every
+duration globally, so an element may never depend on an animation running to end
+up visible — check the final keyframe, not the first.
 
 **Production config is not in the repo.** Supabase keys are GitHub Actions
 secrets; Google OAuth lives in Google Cloud Console and the Supabase dashboard.

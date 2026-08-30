@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Trip } from '../lib/types'
 import { todayISO } from '../lib/format'
 import { Banner, errorMessage } from '../components/ui'
+import { Wordmark } from '../components/art'
 
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'CAD', 'AUD', 'NZD', 'JPY']
 
@@ -32,38 +33,42 @@ export function CreateTripScreen({ onCreated, onSignOut }: {
   }
 
   return (
-    <div className="centered">
-      <form className="card" onSubmit={submit}>
-        <div className="brand"><b>WeGo</b></div>
-        <h2>Start a trip</h2>
+    <div className="centered auth-page">
+      <form className="card cut taped new-journal" onSubmit={submit}>
+        <Wordmark />
+        <span className="kicker">A blank journal</span>
+        <h1>Start a trip</h1>
         <p className="small muted">
-          You can invite as many friends as you like once the trip exists.
+          Fill in the cover page. You can invite as many friends as you like once the trip exists,
+          and the shared costs re-divide as each one joins.
         </p>
         {error ? <Banner kind="error">{error}</Banner> : null}
-        <label className="field">
-          Trip name
-          <input required autoFocus maxLength={120} value={name}
-                 onChange={(e) => setName(e.target.value)} placeholder="Summer escape" />
-        </label>
-        <label className="field">
-          Destination
-          <input required maxLength={160} value={destination}
-                 onChange={(e) => setDestination(e.target.value)} placeholder="Lisbon, Portugal" />
-        </label>
-        <label className="field">
-          Departure date
-          <input required type="date" min={todayISO()} value={departureDate}
-                 onChange={(e) => setDepartureDate(e.target.value)} />
-        </label>
-        <label className="field">
-          Currency
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
+        <div className="form-grid">
+          <label className="field full">
+            Trip name
+            <input required autoFocus maxLength={120} value={name}
+                   onChange={(e) => setName(e.target.value)} placeholder="Summer escape" />
+          </label>
+          <label className="field full">
+            Destination
+            <input required maxLength={160} value={destination}
+                   onChange={(e) => setDestination(e.target.value)} placeholder="Lisbon, Portugal" />
+          </label>
+          <label className="field">
+            Departure date
+            <input required type="date" min={todayISO()} value={departureDate}
+                   onChange={(e) => setDepartureDate(e.target.value)} />
+          </label>
+          <label className="field">
+            Currency
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+        </div>
         <button className="btn primary block" type="submit"
                 disabled={busy || !name.trim() || !destination.trim() || !departureDate}>
-          {busy ? 'Creating…' : 'Create trip'}
+          {busy ? 'Opening the journal…' : 'Create trip'}
         </button>
         <button className="btn ghost block small" type="button" onClick={onSignOut}>Sign out</button>
       </form>

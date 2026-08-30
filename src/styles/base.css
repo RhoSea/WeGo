@@ -1,0 +1,287 @@
+/* ---------------------------------------------------------------------------
+   Base — reset, typography, the app shell and its two navigations.
+--------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html,
+body,
+#root { height: 100%; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font: 15px/1.55 var(--font-ui);
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Paper: warm ground, a wash of light from the top left, and fibre grain. */
+  background-color: var(--paper);
+  background-image:
+    var(--grain),
+    radial-gradient(1200px 700px at 8% -12%, rgba(255, 255, 255, 0.85), transparent 60%),
+    radial-gradient(900px 620px at 108% 6%, rgba(169, 216, 230, 0.3), transparent 62%),
+    radial-gradient(700px 700px at 50% 118%, rgba(243, 196, 83, 0.18), transparent 66%);
+  background-attachment: fixed;
+  background-size: 160px 160px, auto, auto, auto;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-optical-sizing: auto;
+  line-height: 1.18;
+  letter-spacing: -0.012em;
+}
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.16rem; }
+h3 { font-size: 1rem; }
+p { margin: 0; }
+
+a {
+  color: var(--teal-ink);
+  text-decoration-color: rgba(24, 100, 104, 0.4);
+  text-underline-offset: 3px;
+}
+a:hover { text-decoration-color: currentColor; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2.5px solid var(--teal-ink);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection { background: var(--gold-wash); }
+
+/* Type accents ------------------------------------------------------------ */
+
+.hand {
+  font-family: var(--font-hand);
+  font-size: 1.18em;
+  line-height: 1.15;
+  color: var(--ink-soft);
+}
+.kicker {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.serif { font-family: var(--font-display); }
+
+/* Utilities --------------------------------------------------------------- */
+
+.row { display: flex; align-items: center; gap: 10px; }
+.row.between { justify-content: space-between; }
+.row.wrap { flex-wrap: wrap; }
+.row.top { align-items: flex-start; }
+.col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.grow { flex: 1; min-width: 0; }
+.muted { color: var(--ink-soft); }
+.faint { color: var(--ink-faint); }
+.small { font-size: 0.83rem; }
+.tiny { font-size: 0.75rem; }
+.num { font-variant-numeric: tabular-nums; }
+.strong { font-weight: 700; }
+.center { text-align: center; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nowrap { white-space: nowrap; }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Hand-drawn rules -------------------------------------------------------- */
+
+.divider {
+  height: 7px;
+  border: 0;
+  margin: 2px 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='7' viewBox='0 0 120 7'%3E%3Cpath d='M0 4C10 1 20 6 30 4s20-4 30-2 20 4 30 2 20-4 30-2' fill='none' stroke='%23263238' stroke-opacity='.3' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x center / 120px 7px;
+}
+
+/* App shell --------------------------------------------------------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.masthead {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: linear-gradient(180deg, rgba(248, 241, 228, 0.97), rgba(248, 241, 228, 0.9));
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 var(--rule-soft), 0 12px 20px -20px rgba(129, 96, 55, 0.7);
+}
+.masthead-inner {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 10px var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.masthead-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+/* Wordmark ---------------------------------------------------------------- */
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  padding: 0;
+  background: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.32rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  line-height: 1;
+}
+.wordmark svg { overflow: visible; }
+.wordmark .plane { transition: transform 0.5s var(--ease-paper); }
+.wordmark:hover .plane { transform: translate(3px, -3px) rotate(-8deg); }
+
+/* Desktop navigation — ticket tabs ---------------------------------------- */
+
+.nav-desk { display: none; }
+.nav-desk .tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 15px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px 11px 4px 4px;
+  background: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: color 0.18s, background 0.18s, transform 0.18s var(--ease-paper);
+}
+.nav-desk .tab:hover { color: var(--ink); background: rgba(255, 253, 248, 0.75); }
+.nav-desk .tab svg { color: var(--ink-faint); transition: color 0.18s; }
+.nav-desk .tab:hover svg { color: var(--teal); }
+.nav-desk .tab[aria-current='page'] {
+  color: var(--ink);
+  background: var(--card);
+  border-color: var(--rule-soft);
+  box-shadow: var(--lift-1);
+}
+.nav-desk .tab[aria-current='page'] svg { color: var(--teal); }
+/* A route line inked under the tab you are on. */
+.nav-desk .tab[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 3px;
+  height: 4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='4' viewBox='0 0 60 4'%3E%3Cpath d='M1 2.6C12 .6 22 3.4 32 1.8S52 .8 59 2.4' fill='none' stroke='%23f06f5e' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E") repeat-x center / 60px 4px;
+}
+
+/* Mobile navigation — a bottom row of stamps ------------------------------ */
+
+.nav-mobile {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: rgba(255, 253, 248, 0.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--rule-soft);
+  box-shadow: 0 -10px 24px -20px rgba(129, 96, 55, 0.9);
+}
+.nav-mobile .tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 2px 5px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  min-height: 52px;
+  transition: color 0.18s, background 0.18s;
+}
+.nav-mobile .tab .ink {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 26px;
+  border-radius: 9px;
+  transition: background 0.2s var(--ease-paper), transform 0.25s var(--stamp-ease);
+}
+.nav-mobile .tab[aria-current='page'] { color: var(--teal-ink); }
+.nav-mobile .tab[aria-current='page'] .ink {
+  background: var(--teal-wash);
+  transform: rotate(-3deg);
+}
+
+/* Page -------------------------------------------------------------------- */
+
+.page {
+  flex: 1;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 16px var(--gutter) calc(78px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.page-title h2 { font-size: 1.24rem; }
+
+@media (min-width: 900px) {
+  :root { --gutter: 28px; }
+  .nav-desk { display: flex; gap: 4px; }
+  .nav-mobile { display: none; }
+  .page { padding-bottom: 48px; gap: 20px; }
+  h1 { font-size: 1.7rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

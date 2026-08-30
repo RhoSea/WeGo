@@ -1,0 +1,132 @@
+/* ---------------------------------------------------------------------------
+   WeGo design tokens — a paper-and-ink travel sketchbook.
+   Every colour, type and motion decision the rest of the sheets build on.
+--------------------------------------------------------------------------- */
+
+/* Self-hosted so the app never phones a font CDN. Variable fonts: one file
+   covers every weight we use. */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/fonts/fraunces-latin.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Fraunces';
+  src: url('/fonts/fraunces-latin-ext.woff2') format('woff2');
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dmsans-latin.woff2') format('woff2');
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/dmsans-latin-ext.woff2') format('woff2');
+  font-weight: 100 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Caveat';
+  src: url('/fonts/caveat-latin.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  /* Paper ------------------------------------------------------------------ */
+  --paper: #f8f1e4;
+  --paper-deep: #efe3cf;
+  --paper-edge: #e4d7c0;
+  --card: #fffdf8;
+
+  /* Ink -------------------------------------------------------------------- */
+  --ink: #263238;
+  --ink-soft: #4f5f67;
+  --ink-faint: #626d73;
+  --rule: rgba(38, 50, 56, 0.16);
+  --rule-soft: rgba(38, 50, 56, 0.09);
+
+  /* Travel inks. The plain name is the illustration fill; `-ink` is the
+     text-safe darkening (>= 4.5:1 on paper); `-wash` is the tint behind it. */
+  --teal: #23858a;
+  --teal-ink: #186468;
+  --teal-wash: #dceef0;
+  --coral: #f06f5e;
+  --coral-ink: #b8402f;
+  --coral-wash: #fde7e2;
+  --gold: #f3c453;
+  --gold-ink: #8a6410;
+  --gold-wash: #fbf0d3;
+  --sage: #8eaa91;
+  --sage-ink: #4d6b51;
+  --sage-wash: #e5ede5;
+  --sky: #a9d8e6;
+  --sky-ink: #1c6b81;
+  --sky-wash: #e4f2f7;
+
+  /* Category inks for the budget chart. Deeper cousins of the palette above,
+     stepped until every neighbouring pair separates under simulated colour
+     blindness. Every bar is directly labelled as well, so hue is reinforcement
+     and never the only way to tell two categories apart. */
+  --cat-flights: #12808c;
+  --cat-accommodation: #e0452f;
+  --cat-transportation: #5aa8dc;
+  --cat-food: #e5a90a;
+  --cat-activities: #6fa25f;
+  --cat-buffer: #3d5462;
+  --cat-other: #a8794a;
+
+  /* Type ------------------------------------------------------------------- */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    Georgia, serif;
+  --font-ui: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-hand: 'Caveat', 'Bradley Hand', 'Segoe Script', cursive;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Space and shape -------------------------------------------------------- */
+  --gutter: 16px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  /* Corners that are a little uneven, the way a cut card never is square. */
+  --radius-hand: 16px 13px 17px 12px;
+
+  /* Warm shadows — paper lifting off a café table, never grey. */
+  --lift-1: 0 1px 0 rgba(38, 50, 56, 0.04), 0 2px 6px -2px rgba(129, 96, 55, 0.24);
+  --lift-2: 0 1px 0 rgba(38, 50, 56, 0.05), 0 10px 22px -14px rgba(129, 96, 55, 0.5);
+  --lift-3: 0 2px 0 rgba(38, 50, 56, 0.05), 0 20px 38px -22px rgba(129, 96, 55, 0.62);
+
+  /* Motion ----------------------------------------------------------------- */
+  --ease-paper: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --stamp-ease: cubic-bezier(0.2, 1.5, 0.5, 1);
+
+  /* Fibre grain, generated once as a tiny inline SVG. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)' opacity='0.32'/%3E%3C/svg%3E");
+
+  color-scheme: light;
+  accent-color: var(--teal-ink);
+}

@@ -5,6 +5,10 @@ everyone still needs to save. Built with React, TypeScript, Vite and Supabase,
 hosted on GitHub Pages. Sign-in is through Google, so there is no password to
 remember and no email delivery to go wrong.
 
+It is dressed as a shared travel sketchbook: paper and ink rather than a finance
+dashboard, with postcards, ticket stubs, status stamps and a hand-drawn route
+that fills in as the group saves.
+
 Three screens:
 
 - **Plan** — shared trip ideas with a status (Idea / Maybe / Confirmed / Booked),
@@ -202,5 +206,46 @@ src/lib/calc.ts        all budget and savings maths (pure, unit tested)
 src/lib/calc.test.ts   the test suite
 src/state/             auth session and trip data loading with realtime updates
 src/screens/           Plan, Budget, Savings, Members, sign-in, join, create
+src/components/        shared interface pieces and the SVG artwork
+src/styles/            the design system, in four sheets
+public/fonts/          the three self-hosted typefaces
 supabase/schema.sql    tables, RLS policies, RPCs
 ```
+
+## 6. The design
+
+The look is a travel sketchbook — layered paper, warm shadows, stamps and
+tickets — kept deliberately calm underneath so the numbers stay easy to read.
+
+```
+src/styles/tokens.css      palette, typefaces, paper grain, motion easings
+src/styles/base.css        reset, typography, app shell, both navigations
+src/styles/components.css  cards, tape, stamps, tickets, buttons, fields, states
+src/styles/screens.css     the journal header and each screen's own treatment
+```
+
+`src/styles.css` imports those four in order and is the only stylesheet the app
+loads.
+
+**Colour.** Every colour is a custom property in `tokens.css`. Each travel ink
+comes in three strengths: the plain name (`--teal`) fills illustrations, `-ink`
+(`--teal-ink`) is darkened until it passes 4.5:1 on paper and is the only one
+safe for text, and `-wash` is the tint behind it. The seven `--cat-*` inks used
+by the budget chart are stepped so that neighbouring categories stay apart under
+simulated colour blindness; every bar is directly labelled as well, so colour is
+never the only thing telling two categories apart.
+
+**Type.** Fraunces for headings, DM Sans for interface text, Caveat for the few
+handwritten notes. All three are variable fonts, subset to latin, self-hosted
+from `public/fonts` (SIL Open Font License — see `public/fonts/OFL.txt`) so the
+app never calls out to a font CDN.
+
+**Artwork.** Everything illustrated — the wordmark, the route to the
+destination, the icons, the chart's hand-drawn bars, the empty-state spots — is
+SVG drawn in `src/components/art.tsx`. There is no icon library and no imagery
+to license.
+
+**Motion.** Gentle: paper lifting on hover, a stamp coming down when a
+contribution is recorded, the route inking itself in. Everything is disabled
+under `prefers-reduced-motion: reduce`, and nothing needs an animation to
+finish in order to be visible.

@@ -4,6 +4,7 @@ import { PLAN_STATUSES, type PlanItem, type PlanStatus } from '../lib/types'
 import { formatDate, safeHttpUrl, titleCase } from '../lib/format'
 import type { TripData } from '../state/useTripData'
 import { Banner, Empty, Sheet, errorMessage } from '../components/ui'
+import { ArtSuitcase, IconCalendar, IconLink, IconPlus } from '../components/art'
 
 type Draft = {
   title: string
@@ -74,61 +75,88 @@ export function PlanScreen({ data, userId }: { data: TripData; userId: string })
     <>
       {error ? <Banner kind="error">{error}</Banner> : null}
 
-      <div className="card tight">
-        <div className="row wrap">
-          <label className="field grow">
-            Filter by status
-            <select value={filter} onChange={(e) => setFilter(e.target.value as 'all' | PlanStatus)}>
-              <option value="all">All ({data.planItems.length})</option>
-              {PLAN_STATUSES.map((s) => (
-                <option key={s} value={s}>{titleCase(s)} ({counts.get(s) ?? 0})</option>
-              ))}
-            </select>
-          </label>
-          <label className="field grow">
-            Sort by date
+      <div className="page-title">
+        <h2>The plan</h2>
+        <span className="hand">everything we want to do</span>
+      </div>
+
+      <div className="card tight toolbar">
+        <div className="chips" role="group" aria-label="Filter ideas by status">
+          <button
+            className="chip"
+            aria-pressed={filter === 'all'}
+            onClick={() => setFilter('all')}
+          >
+            All <span className="count">{data.planItems.length}</span>
+          </button>
+          {PLAN_STATUSES.map((s) => (
+            <button
+              key={s}
+              className="chip"
+              aria-pressed={filter === s}
+              onClick={() => setFilter(s)}
+            >
+              {titleCase(s)} <span className="count">{counts.get(s) ?? 0}</span>
+            </button>
+          ))}
+        </div>
+        <div className="toolbar-end">
+          <label className="field sort-field">
+            Sort
             <select value={sort} onChange={(e) => setSort(e.target.value as 'date-asc' | 'date-desc')}>
               <option value="date-asc">Earliest first</option>
               <option value="date-desc">Latest first</option>
             </select>
           </label>
+          <button className="btn primary" onClick={() => setEditing('new')}>
+            <IconPlus /> Add an idea
+          </button>
         </div>
-        <button className="btn primary block" onClick={() => setEditing('new')}>Add an idea</button>
       </div>
 
-      <div className="list">
-        {visible.length === 0 ? (
-          <Empty>
-            {data.planItems.length === 0
-              ? 'No ideas yet. Add the first thing you want to do.'
-              : 'Nothing matches this filter.'}
-          </Empty>
-        ) : (
-          visible.map((item) => {
+      {visible.length === 0 ? (
+        <Empty
+          art={<ArtSuitcase />}
+          title={data.planItems.length === 0 ? 'The first page is blank' : 'Nothing under that stamp'}
+        >
+          {data.planItems.length === 0
+            ? 'Add the first thing you want to do — a beach, a bar, a hike at sunrise.'
+            : 'No ideas carry this status yet. Try another filter.'}
+        </Empty>
+      ) : (
+        <div className="postcards">
+          {visible.map((item) => {
             const href = safeHttpUrl(item.link)
             return (
-              <article className="card tight" key={item.id}>
-                <div className="row between">
-                  <h3 className="grow">{item.title}</h3>
-                  <span className={`pill ${item.status}`}>{item.status}</span>
-                </div>
-                {item.item_date ? <p className="small muted">{formatDate(item.item_date)}</p> : null}
-                {item.note ? <p className="small">{item.note}</p> : null}
+              <article className="postcard card cut liftable" key={item.id}>
+                <span className={`stamp ${item.status} tilt postcard-stamp`}>{item.status}</span>
+                <h3 className="postcard-title">{item.title}</h3>
+                {item.item_date ? (
+                  <p className="date-ticket">
+                    <IconCalendar size={14} /> {formatDate(item.item_date)}
+                  </p>
+                ) : (
+                  <p className="tiny faint">No date yet</p>
+                )}
+                {item.note ? <p className="small postcard-note">{item.note}</p> : null}
                 {href ? (
-                  <a className="small truncate" href={href} target="_blank" rel="noopener noreferrer">{href}</a>
+                  <a className="small postcard-link" href={href} target="_blank" rel="noopener noreferrer">
+                    <IconLink /> <span className="truncate">{href.replace(/^https?:\/\//, '')}</span>
+                  </a>
                 ) : null}
-                <div className="row between">
-                  <span className="small muted">Added by {data.nameFor(item.created_by)}</span>
-                  <span className="row">
+                <hr className="divider" />
+                <div className="row between postcard-foot">
+                  <span className="tiny faint truncate">Added by {data.nameFor(item.created_by)}</span>
+                  <span className="row" style={{ gap: 2 }}>
                     <button className="btn ghost small" onClick={() => setEditing(item)}>Edit</button>
                     <button className="btn ghost small danger" onClick={() => void remove(item)}>Delete</button>
                   </span>
                 </div>
               </article>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       {editing ? (
         <PlanForm
@@ -192,6 +220,10 @@ function PlanForm(props: {
             {PLAN_STATUSES.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
           </select>
         </label>
+        <div className="full stamp-preview" aria-hidden="true">
+          <span className={`stamp ${draft.status} tilt`}>{draft.status}</span>
+          <span className="tiny faint">how it will be stamped</span>
+        </div>
         <label className="field full">
           Link (optional)
           <input

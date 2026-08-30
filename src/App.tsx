@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { parseJoinToken, useHashRoute } from './lib/useHashRoute'
-import { formatDate } from './lib/format'
-import { daysUntil } from './lib/calc'
+import { computeTripFunding, daysUntil } from './lib/calc'
 import type { Trip } from './lib/types'
 import { useSession } from './state/useSession'
 import { useTripData } from './state/useTripData'
-import { Banner } from './components/ui'
+import { Banner, SkeletonCard, errorMessage } from './components/ui'
+import { Nav, TABS } from './components/Nav'
+import { TripHeader } from './components/TripHeader'
+import { PaperPlane, Wordmark } from './components/art'
 import { PlanScreen } from './screens/Plan'
 import { BudgetScreen } from './screens/Budget'
 import { SavingsScreen } from './screens/Savings'
@@ -14,13 +16,6 @@ import { MembersScreen } from './screens/Members'
 import { SignInScreen } from './screens/SignIn'
 import { CreateTripScreen } from './screens/CreateTrip'
 import { JoinScreen, PENDING_INVITE_KEY } from './screens/Join'
-
-const TABS = [
-  { path: '/plan', label: 'Plan' },
-  { path: '/budget', label: 'Budget' },
-  { path: '/savings', label: 'Savings' },
-  { path: '/members', label: 'Members' },
-] as const
 
 const SELECTED_TRIP_KEY = 'wego.tripId'
 
@@ -35,11 +30,16 @@ export default function App() {
   const { session, loading: authLoading, userId } = useSession()
   const [route, navigate] = useHashRoute()
   const [trips, setTrips] = useState<Trip[] | null>(null)
+  const [tripsError, setTripsError] = useState<string | null>(null)
   const [tripId, setTripId] = useState<string | null>(null)
 
   const loadTrips = useCallback(async () => {
     if (!userId) { setTrips(null); setTripId(null); return }
-    const { data } = await supabase.from('trips').select('*').order('created_at')
+    const { data, error } = await supabase.from('trips').select('*').order('created_at')
+    // Without this an unreachable database looked exactly like having no trips,
+    // and offered to start one that could not be saved.
+    if (error) { setTripsError(errorMessage(error, 'Could not load your trips.')); return }
+    setTripsError(null)
     const rows = (data as Trip[]) ?? []
     setTrips(rows)
     setTripId((current) => {
@@ -53,7 +53,7 @@ export default function App() {
   useEffect(() => { void loadTrips() }, [loadTrips])
   useEffect(() => { writeStored(SELECTED_TRIP_KEY, tripId) }, [tripId])
 
-  // Finish a join that was interrupted by the emailed sign-in link.
+  // Finish a join that was interrupted by the trip through Google sign-in.
   useEffect(() => {
     if (!userId || parseJoinToken(route)) return
     const pending = readStored(PENDING_INVITE_KEY)
@@ -64,9 +64,7 @@ export default function App() {
 
   if (!isSupabaseConfigured) return <SetupNotice />
 
-  if (authLoading) {
-    return <div className="centered"><div className="card"><p className="muted">Loading…</p></div></div>
-  }
+  if (authLoading) return <PaperLoader note="Unfolding the map…" />
 
   const joinToken = parseJoinToken(route)
   if (joinToken) {
@@ -89,16 +87,31 @@ export default function App() {
 
   if (!session || !userId) return <SignInScreen />
 
-  if (trips === null) {
-    return <div className="centered"><div className="card"><p className="muted">Loading…</p></div></div>
-  }
-
   const signOut = async () => {
     writeStored(SELECTED_TRIP_KEY, null)
     writeStored(PENDING_INVITE_KEY, null)
     await supabase.auth.signOut()
     navigate('/plan')
   }
+
+  if (tripsError) {
+    return (
+      <div className="centered">
+        <div className="card cut taped">
+          <Wordmark />
+          <Banner kind="error">{tripsError}</Banner>
+          <p className="small muted">
+            The trip lives in the cloud, so this usually means the connection dropped. Your data is
+            safe.
+          </p>
+          <button className="btn primary block" onClick={() => void loadTrips()}>Try again</button>
+          <button className="btn ghost block small" onClick={() => void signOut()}>Sign out</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (trips === null) return <PaperLoader note="Finding your trips…" />
 
   if (trips.length === 0) {
     return (
@@ -112,39 +125,29 @@ export default function App() {
   const tab = TABS.find((t) => t.path === route)?.path ?? '/plan'
   const trip = data.trip
   const countdown = trip ? daysUntil(trip.departure_date, new Date()) : 0
+  const funding = computeTripFunding(data.costs, data.savings)
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="grow col">
-          <h1 className="truncate">{trip?.name ?? 'WeGo'}</h1>
-          {trip ? (
-            <span className="sub truncate">
-              {trip.destination} · {formatDate(trip.departure_date)}
-              {countdown >= 0 ? ` · ${countdown} ${countdown === 1 ? 'day' : 'days'} to go` : ' · departed'}
-            </span>
-          ) : null}
+      <header className="masthead">
+        <div className="masthead-inner">
+          <Wordmark />
+          <Nav current={tab} onNavigate={navigate} variant="desktop" />
+          <div className="masthead-actions">
+            <button className="btn ghost small" onClick={() => void signOut()}>Sign out</button>
+          </div>
         </div>
-        <button className="btn ghost small" onClick={() => void signOut()}>Sign out</button>
       </header>
 
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t.path}
-            aria-current={tab === t.path ? 'page' : undefined}
-            onClick={() => navigate(t.path)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      <main>
+      <main className="page">
         {trips.length > 1 ? (
-          <label className="field">
-            Trip
-            <select value={tripId ?? ''} onChange={(e) => setTripId(e.target.value)}>
+          <label className="trip-picker">
+            <span className="kicker">Journal</span>
+            <select
+              value={tripId ?? ''}
+              onChange={(e) => setTripId(e.target.value)}
+              aria-label="Choose which trip to view"
+            >
               {trips.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </label>
@@ -153,17 +156,44 @@ export default function App() {
         {data.error ? <Banner kind="error">{data.error}</Banner> : null}
 
         {data.loading || !trip ? (
-          <p className="empty">Loading trip…</p>
-        ) : tab === '/plan' ? (
-          <PlanScreen data={data} userId={userId} />
-        ) : tab === '/budget' ? (
-          <BudgetScreen data={data} userId={userId} />
-        ) : tab === '/savings' ? (
-          <SavingsScreen data={data} userId={userId} />
+          <>
+            <div className="card" aria-hidden="true">
+              <div className="skel skel-title" />
+              <div className="skel skel-line mid" />
+              <div className="skel skel-line" style={{ height: 74 }} />
+            </div>
+            <SkeletonCard />
+            <p className="center muted small" role="status">Opening the journal…</p>
+          </>
         ) : (
-          <MembersScreen data={data} userId={userId} />
+          <>
+            <TripHeader trip={trip} members={data.members} funding={funding} countdown={countdown} />
+            {tab === '/plan' ? (
+              <PlanScreen data={data} userId={userId} />
+            ) : tab === '/budget' ? (
+              <BudgetScreen data={data} userId={userId} />
+            ) : tab === '/savings' ? (
+              <SavingsScreen data={data} userId={userId} />
+            ) : (
+              <MembersScreen data={data} userId={userId} />
+            )}
+          </>
         )}
       </main>
+
+      <Nav current={tab} onNavigate={navigate} variant="mobile" />
+    </div>
+  )
+}
+
+/** The screen you see for a heartbeat before anything has loaded. */
+function PaperLoader({ note }: { note: string }) {
+  return (
+    <div className="centered">
+      <div className="card cut center loader-card" role="status">
+        <span className="loader-plane"><PaperPlane size={30} /></span>
+        <p className="hand">{note}</p>
+      </div>
     </div>
   )
 }
@@ -171,8 +201,8 @@ export default function App() {
 function SetupNotice() {
   return (
     <div className="centered">
-      <div className="card">
-        <div className="brand"><b>WeGo</b></div>
+      <div className="card cut taped">
+        <Wordmark />
         <Banner kind="warn">Supabase is not configured yet.</Banner>
         <p className="small muted">
           Copy <code>.env.example</code> to <code>.env</code> and fill in{' '}

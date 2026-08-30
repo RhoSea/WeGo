@@ -3,7 +3,9 @@ import {
   computeBudgetTotals,
   computeMemberShares,
   computeSavingsProgress,
+  computeTripFunding,
   daysUntil,
+  equalShare,
   round2,
   sumSavings,
 } from './calc'
@@ -124,6 +126,17 @@ describe('computeMemberShares', () => {
   })
 })
 
+describe('equalShare', () => {
+  it('divides by the current head count', () => {
+    expect(equalShare(300, 4)).toBe(75)
+    expect(equalShare(100, 3)).toBeCloseTo(33.3333, 4)
+  })
+
+  it('charges nobody when there is nobody', () => {
+    expect(equalShare(300, 0)).toBe(0)
+  })
+})
+
 describe('sumSavings', () => {
   const entry = (user_id: string, amount: number): SavingsEntry => ({
     id: crypto.randomUUID(),
@@ -140,6 +153,40 @@ describe('sumSavings', () => {
     expect(sumSavings(entries, 'a')).toBe(125.5)
     expect(sumSavings(entries, 'b')).toBe(50)
     expect(sumSavings(entries, 'c')).toBe(0)
+  })
+})
+
+describe('computeTripFunding', () => {
+  const entry = (user_id: string, amount: number): SavingsEntry => ({
+    id: crypto.randomUUID(),
+    trip_id: 'trip',
+    user_id,
+    amount,
+    entry_date: '2026-02-01',
+    note: null,
+    created_at: '2026-02-01T00:00:00Z',
+  })
+
+  it('measures the whole group against the whole estimated budget', () => {
+    const funding = computeTripFunding(
+      [cost({ estimated_amount: 800 }), cost({ estimated_amount: 200, split_type: 'personal', assigned_to: 'a' })],
+      [entry('a', 250), entry('b', 150)],
+    )
+    expect(funding.target).toBe(1000)
+    expect(funding.saved).toBe(400)
+    expect(funding.remaining).toBe(600)
+    expect(funding.progress).toBeCloseTo(0.4)
+  })
+
+  it('reads as not started while nothing is budgeted', () => {
+    expect(computeTripFunding([], []).progress).toBe(0)
+    expect(computeTripFunding([], [entry('a', 50)]).progress).toBe(0)
+  })
+
+  it('clamps at fully funded and never owes a negative remainder', () => {
+    const funding = computeTripFunding([cost({ estimated_amount: 100 })], [entry('a', 260)])
+    expect(funding.progress).toBe(1)
+    expect(funding.remaining).toBe(0)
   })
 })
 

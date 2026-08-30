@@ -97,6 +97,11 @@ export function computeMemberShares(
   return shares
 }
 
+/** One member's slice of a cost that everybody splits. */
+export function equalShare(amount: number, memberCount: number): number {
+  return memberCount > 0 ? amount / memberCount : 0
+}
+
 export function sumSavings(entries: readonly SavingsEntry[], userId: string): number {
   let total = 0
   for (const entry of entries) if (entry.user_id === userId) total += entry.amount ?? 0
@@ -159,5 +164,34 @@ export function computeSavingsProgress(input: {
     target, saved, remaining, progress, onTrack, departed, daysUntilDeparture,
     weeklyNeeded: remaining / weeksLeft,
     monthlyNeeded: remaining / monthsLeft,
+  }
+}
+
+export interface TripFunding {
+  /** Everything the trip is estimated to cost. */
+  target: number
+  /** Everything the whole group has put aside so far. */
+  saved: number
+  remaining: number
+  /**
+   * 0..1, clamped. Zero while nothing is budgeted yet, so a brand-new trip
+   * reads as "not started" rather than fully funded.
+   */
+  progress: number
+}
+
+/** How far the group as a whole has travelled towards paying for the trip. */
+export function computeTripFunding(
+  costs: readonly Cost[],
+  savings: readonly SavingsEntry[],
+): TripFunding {
+  const target = computeBudgetTotals(costs).estimated
+  let saved = 0
+  for (const entry of savings) saved += entry.amount ?? 0
+  return {
+    target,
+    saved,
+    remaining: Math.max(0, target - saved),
+    progress: target <= 0 ? 0 : Math.min(1, Math.max(0, saved / target)),
   }
 }

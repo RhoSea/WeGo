@@ -3,7 +3,8 @@ import { supabase, inviteUrl } from '../lib/supabase'
 import type { Invitation } from '../lib/types'
 import { formatDate } from '../lib/format'
 import type { TripData } from '../state/useTripData'
-import { Banner, Empty, errorMessage } from '../components/ui'
+import { Avatar, Banner, Empty, errorMessage } from '../components/ui'
+import { ArtEnvelope, IconPlus, PaperPlane, Postmark } from '../components/art'
 
 export function MembersScreen({ data, userId }: { data: TripData; userId: string }) {
   const [invites, setInvites] = useState<Invitation[]>([])
@@ -79,87 +80,126 @@ export function MembersScreen({ data, userId }: { data: TripData; userId: string
     <>
       {error ? <Banner kind="error">{error}</Banner> : null}
 
-      <div className="card">
-        <h2>Members ({data.members.length})</h2>
-        {data.members.map((member) => (
-          <div className="kv" key={member.userId}>
-            <span className="truncate">
-              {member.name}{member.userId === userId ? ' (you)' : ''}
-              {member.email ? <span className="muted small">{' · '}{member.email}</span> : null}
-            </span>
-            <span className="pill">{member.role}</span>
-          </div>
-        ))}
+      <div className="page-title">
+        <h2>Who&rsquo;s coming</h2>
+        <span className="hand">the whole party</span>
+      </div>
+
+      <div className="card passport">
+        <div className="row between">
+          <h3>Travellers</h3>
+          <span className="stamp neutral">{data.members.length} aboard</span>
+        </div>
+        <div className="passport-list">
+          {data.members.map((member) => (
+            <div className="passport-row" key={member.userId}>
+              <Avatar name={member.name} id={member.userId} large />
+              <span className="col grow">
+                <span className="truncate strong">
+                  {member.name}{member.userId === userId ? ' (you)' : ''}
+                </span>
+                {member.email ? <span className="tiny faint truncate">{member.email}</span> : null}
+              </span>
+              <span className={`stamp ${member.role === 'owner' ? 'teal' : 'neutral'}`}>{member.role}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <form className="card" onSubmit={saveName}>
-        <h2>Your display name</h2>
+        <h3>Your display name</h3>
         <p className="small muted">This is how the rest of the group sees you.</p>
         <input
           maxLength={60}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder="Your name"
+          aria-label="Your display name"
         />
-        <button className="btn block" type="submit">{nameSaved ? 'Saved' : 'Save name'}</button>
+        <button className="btn block" type="submit">{nameSaved ? 'Saved ✓' : 'Save name'}</button>
       </form>
 
-      <form className="card" onSubmit={createInvite}>
-        <h2>Invite a friend</h2>
+      <form className="card invite-card taped tape-teal" onSubmit={createInvite}>
+        <h3>Invite a friend</h3>
         <p className="small muted">
-          Each link works once, for one person, and expires after 30 days.
+          Each link works once, for one person, and expires after 30 days. Send it to them
+          directly — anyone holding the link can join.
         </p>
         <input
           maxLength={60}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Who is this link for? (optional)"
+          aria-label="Who is this invitation for"
         />
         <button className="btn primary block" type="submit" disabled={busy}>
-          {busy ? 'Creating…' : 'Create an invitation link'}
+          <IconPlus /> {busy ? 'Writing the ticket…' : 'Create an invitation link'}
         </button>
       </form>
 
-      <div className="list">
-        <h2>Open invitations ({pending.length})</h2>
-        {invites.length === 0 ? (
-          <Empty>No invitations yet.</Empty>
-        ) : (
-          invites.map((invite) => {
+      <div className="page-title">
+        <h3>Invitations</h3>
+        <span className="small muted">{pending.length} still open</span>
+      </div>
+
+      {invites.length === 0 ? (
+        <Empty art={<ArtEnvelope />} title="No tickets written yet">
+          Create an invitation link above and send it to whoever is coming.
+        </Empty>
+      ) : (
+        <div className="stack">
+          {invites.map((invite) => {
             const expired = new Date(invite.expires_at) <= new Date()
             const state = invite.accepted_at ? 'Accepted' : expired ? 'Expired' : 'Waiting'
+            const spent = Boolean(invite.accepted_at) || expired
             return (
-              <article className="card tight" key={invite.id}>
-                <div className="row between">
-                  <span className="strong truncate">{invite.label ?? 'Invitation'}</span>
-                  <span className={`pill ${invite.accepted_at ? 'confirmed' : expired ? 'bad' : 'maybe'}`}>
-                    {state}
-                  </span>
+              <article className={`ticket${spent ? ' spent' : ''}`} key={invite.id}>
+                <div className="ticket-main">
+                  <div className="row between wrap">
+                    <span className="kicker">Boarding pass</span>
+                    <span className={`stamp ${invite.accepted_at ? 'confirmed' : expired ? 'bad' : 'maybe'}`}>
+                      {state}
+                    </span>
+                  </div>
+                  <h3 className="truncate">{invite.label ?? 'Open invitation'}</h3>
+                  {invite.accepted_at ? (
+                    <p className="small muted">
+                      Used by {data.nameFor(invite.accepted_by)} on {formatDate(invite.accepted_at)}
+                    </p>
+                  ) : expired ? (
+                    <p className="small muted">Expired {formatDate(invite.expires_at)}</p>
+                  ) : (
+                    <>
+                      <p className="code">{inviteUrl(invite.token)}</p>
+                      <div className="row">
+                        <button className="btn small grow" onClick={() => void copy(invite.token)}>
+                          {copied === invite.token ? 'Copied ✓' : 'Copy link'}
+                        </button>
+                        <button className="btn small danger" onClick={() => void revoke(invite)}>
+                          Revoke
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-                {invite.accepted_at ? (
-                  <p className="small muted">
-                    Used by {data.nameFor(invite.accepted_by)} on {formatDate(invite.accepted_at)}
+                <div className="ticket-stub">
+                  {invite.accepted_at ? <Postmark text="BOARDED" /> : null}
+                  <span className="kicker">WeGo</span>
+                  <p className="stub-line">Admit one traveller</p>
+                  <p className="tiny faint">
+                    {invite.accepted_at
+                      ? 'This ticket has been used'
+                      : expired
+                        ? `Expired ${formatDate(invite.expires_at)}`
+                        : `Valid until ${formatDate(invite.expires_at)}`}
                   </p>
-                ) : expired ? (
-                  <p className="small muted">Expired {formatDate(invite.expires_at)}</p>
-                ) : (
-                  <>
-                    <p className="code">{inviteUrl(invite.token)}</p>
-                    <div className="row">
-                      <button className="btn small grow" onClick={() => void copy(invite.token)}>
-                        {copied === invite.token ? 'Copied' : 'Copy link'}
-                      </button>
-                      <button className="btn small danger" onClick={() => void revoke(invite)}>
-                        Revoke
-                      </button>
-                    </div>
-                  </>
-                )}
+                  <PaperPlane size={20} className="stub-plane" />
+                </div>
               </article>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </>
   )
 }

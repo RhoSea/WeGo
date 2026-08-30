@@ -1,0 +1,432 @@
+/* ---------------------------------------------------------------------------
+   Screens — the journal header, the plan postcards, the budget ledger, the
+   savings journey, the passport and the postcard sign-in.
+--------------------------------------------------------------------------- */
+
+/* Wordmark internals ------------------------------------------------------ */
+
+.wordmark-word { position: relative; padding-bottom: 5px; }
+.wordmark-route {
+  position: absolute;
+  left: 0;
+  right: -2px;
+  bottom: 0;
+  width: 100%;
+  height: 7px;
+  overflow: visible;
+}
+.wordmark .plane { color: var(--coral); margin-left: 4px; align-self: flex-start; }
+
+/* Trip picker ------------------------------------------------------------- */
+
+.trip-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 6px 12px 6px 14px;
+  border: 1px dashed var(--rule);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.7);
+}
+.trip-picker select {
+  min-height: 34px;
+  padding: 4px 30px 4px 8px;
+  border: 0;
+  background-color: transparent;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  max-width: 240px;
+}
+
+/* Journal header ---------------------------------------------------------- */
+
+.journal {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 22px 18px 16px 24px;
+  border-radius: var(--radius-hand);
+  background:
+    repeating-linear-gradient(180deg, transparent 0 28px, rgba(38, 50, 56, 0.045) 28px 29px),
+    linear-gradient(178deg, #fffdf8, #fdf6ea);
+}
+/* The red margin rule down the left of a notebook page. */
+.journal::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 13px;
+  width: 1.5px;
+  background: rgba(240, 111, 94, 0.34);
+  border-radius: 2px;
+}
+.journal-text { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.journal h1 { font-size: clamp(1.5rem, 5.4vw, 2.1rem); }
+.journal-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+.journal-meta svg { color: var(--teal); }
+.journal-meta .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rule);
+}
+.countdown { color: var(--coral-ink); font-size: 1.32rem; margin-top: 2px; }
+.journal-people { display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+
+.journal-art { display: flex; justify-content: center; align-items: center; min-width: 0; }
+.route-art { width: 100%; max-width: 340px; height: auto; }
+.route-label {
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--ink-soft);
+}
+.route-inked {
+  stroke-dasharray: var(--ink-len) 100;
+  animation: route-draw 1.1s var(--ease-paper) both;
+}
+@keyframes route-draw {
+  from { stroke-dasharray: 0 100; }
+  to { stroke-dasharray: var(--ink-len) 100; }
+}
+.route-plane { animation: fade-in 0.7s 0.35s var(--ease-paper) both; }
+
+.journal-funding {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  background: rgba(220, 238, 240, 0.42);
+}
+
+@media (min-width: 760px) {
+  .journal {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+    grid-template-areas: 'text art' 'fund art';
+    align-items: start;
+    padding: 26px 24px 20px 34px;
+  }
+  .journal::after { left: 19px; }
+  .journal-text { grid-area: text; }
+  .journal-art { grid-area: art; align-self: center; }
+  .journal-funding { grid-area: fund; }
+}
+
+/* Loading ----------------------------------------------------------------- */
+
+.centered {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px var(--gutter);
+}
+.centered > .card,
+.centered > form.card { width: 100%; max-width: 440px; }
+.loader-card { align-items: center; gap: 12px; padding: 28px; }
+.loader-plane { color: var(--teal); animation: float-plane 2.4s ease-in-out infinite; }
+@keyframes float-plane {
+  0%, 100% { transform: translate(0, 0) rotate(-4deg); }
+  50% { transform: translate(6px, -7px) rotate(4deg); }
+}
+.loader-card p { font-size: 1.3rem; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--paper-deep);
+}
+
+/* Plan -------------------------------------------------------------------- */
+
+.toolbar { gap: 12px; }
+.toolbar-end { display: flex; align-items: flex-end; gap: 10px; }
+.toolbar-end .btn { flex: 1; }
+.sort-field { flex: 1; min-width: 0; }
+.sort-field select { min-height: 44px; }
+
+.postcards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+
+.postcard { padding-top: 15px; }
+.postcard-stamp { position: absolute; top: -9px; right: 12px; z-index: 1; }
+.postcard-title { font-size: 1.1rem; padding-right: 88px; }
+.postcard-note { color: var(--ink-soft); }
+.date-ticket {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 3px 9px;
+  border: 1px dashed rgba(38, 50, 56, 0.28);
+  border-radius: 6px;
+  background: var(--gold-wash);
+  color: var(--gold-ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.postcard-link { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.postcard-foot { margin-top: -2px; }
+.postcard .divider { margin: 0; }
+
+.stamp-preview { display: flex; align-items: center; gap: 10px; }
+
+@media (min-width: 640px) {
+  .postcards { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  /* Pinned by hand, so no two sit at quite the same angle. */
+  .postcard:nth-child(3n + 1) { rotate: -0.5deg; }
+  .postcard:nth-child(3n + 2) { rotate: 0.4deg; }
+  .postcard:nth-child(3n) { rotate: -0.2deg; }
+  .toolbar { flex-direction: row; align-items: flex-end; justify-content: space-between; }
+  .toolbar .chips { flex: 1; }
+  .toolbar-end .btn { flex: 0 0 auto; }
+  .sort-field { flex: 0 0 auto; width: 150px; }
+}
+
+/* Budget ------------------------------------------------------------------ */
+
+.chart { display: flex; flex-direction: column; gap: 12px; }
+.chart-row { display: flex; flex-direction: column; gap: 4px; }
+.chart-labels { gap: 10px; align-items: baseline; }
+.chart-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.94rem;
+}
+.chart-track { position: relative; height: 16px; }
+.sketch-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 16px;
+  overflow: visible;
+}
+.chart-key { display: inline-flex; align-items: center; gap: 6px; }
+.key-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ink-soft);
+}
+.key-swatch.ghost { opacity: 0.28; height: 10px; }
+
+.cost-group { display: flex; flex-direction: column; gap: 12px; }
+.group-head { gap: 12px; justify-content: flex-start; }
+.cost-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.cost-card { padding-top: 14px; }
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.cat-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--cat);
+  box-shadow: inset 0 0 0 1px rgba(38, 50, 56, 0.14);
+}
+.cost-title { font-size: 1rem; }
+.cost-amount {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cost-meta { gap: 8px; row-gap: 2px; }
+.cost-note {
+  color: var(--ink-soft);
+  padding-left: 10px;
+  border-left: 2px solid var(--rule-soft);
+}
+.cost-card .divider { margin: 0; }
+.split-hint { line-height: 1.45; }
+
+@media (min-width: 900px) {
+  .cost-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+/* Savings ----------------------------------------------------------------- */
+
+.journey-card { gap: 13px; }
+.pace {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px dashed var(--rule);
+  border-radius: 12px;
+  background: var(--gold-wash);
+}
+.pace-rates {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+.pace-rates b { font-family: var(--font-display); font-size: 1.14rem; }
+.pace-or { color: var(--ink-faint); font-family: var(--font-hand); font-size: 1.1rem; }
+
+.member-cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.member-card { gap: 9px; }
+.member-card.is-you { border-color: rgba(24, 100, 104, 0.4); background: linear-gradient(180deg, #fffdf8, var(--teal-wash)); }
+.member-name { font-family: var(--font-display); font-weight: 600; font-size: 0.98rem; }
+.member-rates { display: flex; flex-wrap: wrap; gap: 10px; color: var(--ink-soft); }
+.member-rates b { font-weight: 700; color: var(--ink); }
+
+.slips { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.slip {
+  background:
+    linear-gradient(180deg, var(--card) 92%, transparent),
+    repeating-linear-gradient(90deg, var(--card) 0 8px, var(--paper-deep) 8px 9px);
+}
+.slip-amount { font-family: var(--font-display); font-size: 1.18rem; font-weight: 700; }
+
+@media (min-width: 700px) {
+  .member-cards { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .slips { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+}
+
+/* Members ----------------------------------------------------------------- */
+
+.passport-list { display: flex; flex-direction: column; }
+.passport-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.passport-row + .passport-row { border-top: 1px dashed var(--rule-soft); }
+
+.invite-card { padding-top: 20px; }
+
+.ticket.spent { background: var(--paper); box-shadow: var(--lift-1); }
+.ticket.spent .ticket-main { opacity: 0.78; }
+.stub-line { font-family: var(--font-display); font-weight: 600; font-size: 0.94rem; }
+.stub-plane { color: var(--teal); align-self: flex-end; }
+.ticket-stub .postmark { position: absolute; top: 6px; right: 10px; }
+.postmark-text {
+  font-family: var(--font-display);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  fill: currentColor;
+}
+
+/* Sign-in, join and the first journal ------------------------------------- */
+
+.auth-page { align-items: flex-start; padding-top: 32px; padding-bottom: 40px; }
+@media (min-height: 860px) {
+  .auth-page { align-items: center; }
+}
+.auth-page .ticket { width: 100%; max-width: 680px; }
+
+.postcard-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 940px;
+}
+.postcard-front {
+  padding: 12px;
+  gap: 10px;
+  rotate: -1deg;
+}
+.postcard-scene { border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--rule-soft); }
+.scene-art { display: block; width: 100%; height: auto; }
+.postcard-caption { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 4px 4px; flex-wrap: wrap; }
+.hero-note { font-size: 1.3rem; color: var(--coral-ink); }
+
+.postcard-back { gap: 12px; padding-top: 18px; }
+.postcard-stamp-area {
+  position: absolute;
+  top: -14px;
+  right: 18px;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+}
+.stamp-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 58px;
+  height: 68px;
+  border: 2px dashed rgba(38, 50, 56, 0.35);
+  border-radius: 4px;
+  background: var(--gold-wash);
+  color: var(--coral);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.72);
+  rotate: -5deg;
+}
+.stamp-frame-value {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+.postcard-back .postmark { display: none; }
+.postcard-back h1 { font-size: clamp(1.5rem, 5vw, 2rem); padding-right: 84px; }
+
+/* The cancelled postmark only fits once the card is wide enough for it. */
+@media (min-width: 560px) {
+  .postcard-back .postmark { display: block; position: relative; top: 14px; right: -16px; }
+  .postcard-back h1 { padding-right: 150px; }
+}
+
+.how-to { display: flex; flex-direction: column; gap: 10px; margin: 2px 0; padding: 0; list-style: none; }
+.how-to li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.89rem; color: var(--ink-soft); }
+.how-to b { color: var(--ink); }
+.step-num {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(24, 100, 104, 0.5);
+  background: var(--teal-wash);
+  color: var(--teal-ink);
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.google-btn { margin-top: 2px; }
+
+.new-journal { max-width: 480px; }
+.boarding .ticket-main { padding: 18px 20px; gap: 9px; }
+.boarding h1 { font-size: clamp(1.4rem, 5vw, 1.9rem); }
+
+@media (min-width: 860px) {
+  .postcard-hero { grid-template-columns: 1fr 1fr; align-items: center; }
+  .postcard-front { rotate: -1.6deg; }
+  .postcard-back { rotate: 0.5deg; }
+}
